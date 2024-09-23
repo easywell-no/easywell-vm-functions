@@ -70,7 +70,7 @@ DATE_COLUMNS = [
 
 def normalize_value(value):
     """Converts empty strings or NaNs to None."""
-    if pd.isnull(value) or str(value).strip() == '':
+    if pd.isnull(value) or str(value).strip().lower() in ['', 'nan', 'nat']:
         return None
     return value
 
@@ -84,6 +84,7 @@ def convert_types(row):
         if key in DATE_COLUMNS:
             if row[key]:
                 try:
+                    # Convert to datetime, then format as 'YYYY-MM-DD'
                     row[key] = pd.to_datetime(row[key], dayfirst=True, errors='coerce').strftime('%Y-%m-%d')
                 except Exception as e:
                     logging.warning(f"Date conversion error for {key}: {e}")
@@ -158,6 +159,13 @@ def update_wellbore_data(supabase_client: Client):
     
     # Convert 'date_last_updated_csv' to 'YYYY-MM-DD'
     df['date_last_updated_csv'] = pd.to_datetime(df['date_last_updated_csv'], dayfirst=True, errors='coerce').dt.strftime('%Y-%m-%d')
+    
+    # Replace 'NaT' strings with None
+    df['date_last_updated_csv'] = df['date_last_updated_csv'].replace({'NaT': None, 'NaN': None})
+    
+    # **New Step: Replace all remaining NaN values with None**
+    df = df.where(pd.notnull(df), None)
+    logging.info("Replaced all NaN and 'NaT' values with None.")
     
     # Fetch existing wellbore_data from Supabase
     try:
