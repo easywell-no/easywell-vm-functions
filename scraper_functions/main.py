@@ -4,6 +4,8 @@ from update_wellbore import update_wellbore_data
 from scrape_factpages import scrape_fact_pages
 from supabase import create_client, Client
 
+print("Hello World")
+
 # Load environment variables
 load_dotenv(dotenv_path='./.env')
 
