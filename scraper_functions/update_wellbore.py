@@ -93,7 +93,11 @@ def convert_types(row):
             'wlbpluggedabandondate', 'wlbpluggeddate'
         ]:
             try:
-                row[key] = pd.to_datetime(value, dayfirst=True).date() if value else None
+                if value:
+                    dt = pd.to_datetime(value, dayfirst=True, errors='coerce')
+                    row[key] = dt.strftime('%Y-%m-%d') if not pd.isnull(dt) else None
+                else:
+                    row[key] = None
             except Exception as e:
                 logging.warning(f"Date conversion error for {key}: {e}")
                 row[key] = None
