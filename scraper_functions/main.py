@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from supabase import create_client, Client
 
 print("Hello World")
 
@@ -19,3 +20,8 @@ print(f"Loaded SUPABASE_KEY: {SUPABASE_KEY[:5]}...")
 
 if SUPABASE_URL is None or SUPABASE_KEY is None:
     raise Exception("Environment variables not loaded properly.")
+
+# Create the Supabase client
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+print("Supabase client created successfully!")
