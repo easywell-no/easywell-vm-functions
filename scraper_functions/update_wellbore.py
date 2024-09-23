@@ -63,7 +63,7 @@ def convert_types(row):
                 try:
                     row[key] = pd.to_datetime(value, dayfirst=True, errors='coerce').strftime('%Y-%m-%d')
                 except Exception as e:
-    logging.warning(f"Date conversion error for {key}: {e}")
+                    logging.warning(f"Date conversion error for {key}: {e}")
                     row[key] = None
             else:
                 row[key] = None
