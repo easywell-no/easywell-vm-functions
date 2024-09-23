@@ -25,3 +25,8 @@ if SUPABASE_URL is None or SUPABASE_KEY is None:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 print("Supabase client created successfully!")
+
+from update_wellbore import update_wellbore_data
+
+# Call the update function
+update_wellbore_data(supabase)
