@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(me
                     handlers=[logging.FileHandler("update_wellbore.log"), logging.StreamHandler()])
 
 # Constants
-IGNORED_COLUMNS = ['last_scraped', 'status', 'needs_rescrape', 'date_last_updated_csv', 'datesyncNPD']
+IGNORED_COLUMNS = ['last_scraped', 'status', 'needs_rescrape', 'datesyncNPD']
 SUPABASE_COLUMNS = [
     'wlbwellborename', 'wlbwelltype', 'wlbwell', 'wlbdrillingoperator',
     'wlbproductionlicence', 'wlbpurpose', 'wlbstatus', 'wlbcontent',
@@ -63,7 +63,7 @@ def convert_types(row):
                 try:
                     row[key] = pd.to_datetime(value, dayfirst=True, errors='coerce').strftime('%Y-%m-%d')
                 except Exception as e:
-                    logging.warning(f"Date conversion error for {key}: {e}")
+    logging.warning(f"Date conversion error for {key}: {e}")
                     row[key] = None
             else:
                 row[key] = None
@@ -113,14 +113,6 @@ def update_wellbore_data(supabase_client: Client):
     
     df = df[SUPABASE_COLUMNS]
     logging.info("Selected relevant Supabase columns.")
-    
-    df['last_scraped'] = None
-    df['status'] = 'active'
-    df['needs_rescrape'] = False
-    df['date_last_updated_csv'] = df['wlbdateupdatedmax']
-    
-    df['date_last_updated_csv'] = pd.to_datetime(df['date_last_updated_csv'], dayfirst=True, errors='coerce').dt.strftime('%Y-%m-%d')
-    df['date_last_updated_csv'] = df['date_last_updated_csv'].replace({'NaT': None, 'NaN': None, 'nan': None})
     
     df = df.where(pd.notnull(df), None)
     logging.info("Replaced all NaN and 'NaT' values with None.")
@@ -182,6 +174,8 @@ def update_wellbore_data(supabase_client: Client):
         else:
             new_record = row.to_dict()
             new_record['last_scraped'] = current_date.strftime('%Y-%m-%d')
+            new_record['status'] = 'active'
+            new_record['needs_rescrape'] = False
             new_records.append(new_record)
     
     if new_records:
