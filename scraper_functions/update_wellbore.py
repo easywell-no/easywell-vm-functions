@@ -1,9 +1,8 @@
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from io import StringIO
 import requests
-import json
 from supabase import create_client, Client
 
 # Configure logging
@@ -11,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(me
                     handlers=[logging.FileHandler("update_wellbore.log"), logging.StreamHandler()])
 
 # Constants
-IGNORED_COLUMNS = ['last_scraped', 'status', 'needs_rescrape', 'date_last_updated_csv']
+IGNORED_COLUMNS = ['last_scraped', 'status', 'needs_rescrape', 'date_last_updated_csv', 'datesyncNPD']
 SUPABASE_COLUMNS = [
     'wlbwellborename', 'wlbwelltype', 'wlbwell', 'wlbdrillingoperator',
     'wlbproductionlicence', 'wlbpurpose', 'wlbstatus', 'wlbcontent',
@@ -159,6 +158,9 @@ def update_wellbore_data(supabase_client: Client):
     new_records = []
     records_to_update = []
     
+    current_date = datetime.now().date()
+    three_months_ago = current_date - timedelta(days=90)
+    
     for index, row in df.iterrows():
         well_name = row['wlbwellborename']
         if well_name in existing_dict:
@@ -166,7 +168,12 @@ def update_wellbore_data(supabase_client: Client):
             row_dict = row.to_dict()
             relevant_columns = {k: v for k, v in row_dict.items() if k not in IGNORED_COLUMNS and k != 'wlbwellborename'}
             existing_relevant = {k: existing_record.get(k) for k in relevant_columns.keys()}
-            if relevant_columns != existing_relevant:
+            
+            needs_update = relevant_columns != existing_relevant
+            last_scraped = pd.to_datetime(existing_record.get('last_scraped')).date() if existing_record.get('last_scraped') else None
+            needs_rescrape = needs_update or (last_scraped and last_scraped < three_months_ago)
+            
+            if needs_rescrape:
                 update_record = row_dict.copy()
                 update_record['status'] = 'pending'
                 update_record['needs_rescrape'] = True
@@ -174,7 +181,7 @@ def update_wellbore_data(supabase_client: Client):
                 records_to_update.append(update_record)
         else:
             new_record = row.to_dict()
-            new_record['last_scraped'] = datetime.utcnow().strftime('%Y-%m-%d')
+            new_record['last_scraped'] = current_date.strftime('%Y-%m-%d')
             new_records.append(new_record)
     
     if new_records:
@@ -217,10 +224,3 @@ def update_wellbore_data(supabase_client: Client):
             logging.error(f"Exception occurred during updates: {e}")
     
     logging.info("Update process completed.")
-
-# Example usage
-if __name__ == "__main__":
-    supabase_url = "YOUR_SUPABASE_URL"
-    supabase_key = "YOUR_SUPABASE_KEY"
-    supabase = create_client(supabase_url, supabase_key)
-    update_wellbore_data(supabase)
