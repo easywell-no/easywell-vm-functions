@@ -12,7 +12,6 @@ CSV_TO_SQL_MAPPING = {
     'wlbWellboreName': 'wlbwellborename',
     'wlbFactPageUrl': 'wlbfactpageurl',
     'wlbDateUpdatedMax': 'wlbdateupdatedmax',
-    # Add additional mappings if column names differ
 }
 
 # List of all Supabase table columns
@@ -51,7 +50,6 @@ SUPABASE_COLUMNS = [
     'wlbnpdidwellborereclass', 'prlnpdidproductionlicence', 
     'wlbnpdidsitesurvey', 'wlbaliasname', 'wlbdateupdated', 
     'wlbdateupdatedmax', 'datesyncnpd'
-    # Add any additional columns if necessary
 ]
 
 def normalize_value(value):
@@ -66,45 +64,29 @@ def convert_types(row):
     Adjust this function as needed to handle specific conversions.
     """
     for key, value in row.items():
+        # Handle dates
         if key in ['last_scraped', 'date_last_updated_csv', 'wlbentrydate',
                    'wlbcompletiondate', 'wlbentrypredrilldate', 'wlbcomppredrilldate',
                    'wlbwdssqcdate', 'wlbreleaseddate', 'wlbdatereclass',
                    'wlbpluggedabandondate', 'wlbpluggeddate']:
-            if value:
-                try:
-                    row[key] = pd.to_datetime(value).date()
-                except:
-                    row[key] = None
-            else:
+            try:
+                row[key] = pd.to_datetime(value).date() if value else None
+            except:
                 row[key] = None
+        # Handle floats
         elif key in [
             'wlbbottomholetemperature', 'wlbmaxinclation', 'wlbkellybushelevation',
             'wlbfinalverticaldepth', 'wlbtotaldepth', 'wlbwaterdepth',
             'wlbnsdeg', 'wlbnsmin', 'wlbnssec', 'wlbewdeg', 'wlbewmin',
             'wlbewsec', 'wlbnsdecdeg', 'wlbewdecdeg'
         ]:
-            if value is not None:
-                try:
-                    row[key] = float(value)
-                except:
-                    row[key] = None
-        elif key in [
-            'wlbsubsea', 'wlbdiscoverywellbore', 'wlbmultilateral', 
-            'wlbreentry'
-        ]:
-            if isinstance(value, bool):
-                pass
-            elif isinstance(value, str):
-                row[key] = value.lower() in ['true', '1', 'yes']
-            else:
-                row[key] = bool(value)
+            row[key] = float(value) if value is not None else None
+        # Handle booleans
+        elif key in ['wlbsubsea', 'wlbdiscoverywellbore', 'wlbmultilateral', 'wlbreentry']:
+            row[key] = value.lower() in ['true', '1', 'yes'] if isinstance(value, str) else bool(value)
+        # Handle integers
         elif key in ['wlbentryyear', 'wlbcompletionyear', 'wlbdrillingdays']:
-            if value is not None:
-                try:
-                    row[key] = int(value)
-                except:
-                    row[key] = None
-        # Add more type conversions as needed
+            row[key] = int(value) if value is not None else None
     return row
 
 def update_wellbore_data(supabase_client):
@@ -137,9 +119,11 @@ def update_wellbore_data(supabase_client):
 
     # Get all existing wells in the database
     existing_wells_response = supabase_client.table('wellbore_data').select('*').execute()
-    if existing_wells_response.error:
-        print("Error fetching existing wells:", existing_wells_response.error)
+
+    if existing_wells_response.status_code != 200:
+        print(f"Error fetching existing wells: {existing_wells_response.status_code}")
         return
+
     existing_wells = {well['wlbwellborename']: well for well in existing_wells_response.data}
 
     # Collect batch data for insert and update
@@ -185,19 +169,17 @@ def update_wellbore_data(supabase_client):
     # Perform batch insert of new wells
     if new_wells:
         insert_response = supabase_client.table('wellbore_data').insert(new_wells).execute()
-        if insert_response.error:
-            print("Error inserting new wells:", insert_response.error)
+        if insert_response.status_code != 200:
+            print(f"Error inserting new wells: {insert_response.status_code}")
         else:
             new_wells_count = len(new_wells)
 
     # Perform batch update of existing wells
     if wells_to_update:
-        # Supabase does not support batch updates directly.
-        # You might need to update each well individually or use another approach.
         for well_data in wells_to_update:
             update_response = supabase_client.table('wellbore_data').update(well_data).eq('wlbwellborename', well_data['wlbwellborename']).execute()
-            if update_response.error:
-                print(f"Error updating well '{well_data['wlbwellborename']}':", update_response.error)
+            if update_response.status_code != 200:
+                print(f"Error updating well '{well_data['wlbwellborename']}': {update_response.status_code}")
             else:
                 updated_wells_count += 1
 
@@ -207,13 +189,6 @@ def update_wellbore_data(supabase_client):
     deleted_wells = existing_well_names - csv_well_names
     if deleted_wells:
         deleted_wells_count = len(deleted_wells)
-        print(f"{deleted_wells_count} wells have been removed from the CSV but will be retained in the database.")
-        # Optionally, handle deletions (e.g., mark as inactive)
-        # Example:
-        # for well_name in deleted_wells:
-        #     supabase_client.table('wellbore_data').update({'status': 'inactive'}).eq('wlbwellborename', well_name).execute()
+        print(f"{deleted_wells_count} wells removed from the CSV but retained in the database.")
 
     print(f"Update completed at {datetime.now()}. New: {new_wells_count}, Updated: {updated_wells_count}, Deleted: {deleted_wells_count}")
-
-if __name__ == "__main__":
-    update_wellbore_data(supabase)
