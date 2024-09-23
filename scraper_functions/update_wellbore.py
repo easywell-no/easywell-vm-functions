@@ -153,6 +153,7 @@ def update_wellbore_data(supabase_client: Client):
     current_date = datetime.now().date()
     three_months_ago = current_date - timedelta(days=90)
     
+    # Compare CSV with existing data
     for index, row in df.iterrows():
         well_name = row['wlbwellborename']
         if well_name in existing_dict:
@@ -178,16 +179,17 @@ def update_wellbore_data(supabase_client: Client):
             new_record['needs_rescrape'] = True
             new_records.append(new_record)
     
+    # Determine if any rows were deleted
+    csv_wellbores = set(df['wlbwellborename'].unique())
+    db_wellbores = set(existing_data['wlbwellborename'].unique())
+    deleted_wellbores = db_wellbores - csv_wellbores
+    total_deleted_rows = len(deleted_wellbores)
+    
+    # Insert new records
+    total_new_records = len(new_records)
     if new_records:
         try:
-            for record in new_records:
-                for key, value in record.items():
-                    if isinstance(value, pd.Timestamp):
-                        record[key] = value.strftime('%Y-%m-%d')
-                    elif pd.isna(value):
-                        record[key] = None
-            
-            chunks = [new_records[i:i + 1000] for i in range(0, len(new_records), 1000)]
+            chunks = [new_records[i:i + 1000] for i in range(0, total_new_records, 1000)]
             for chunk in chunks:
                 response = supabase_client.table('wellbore_data').insert(chunk).execute()
                 if hasattr(response, 'data'):
@@ -197,12 +199,10 @@ def update_wellbore_data(supabase_client: Client):
         except Exception as e:
             logging.error(f"Exception occurred during insertion: {e}")
     
+    # Update existing records
+    total_update_records = len(records_to_update)
     if records_to_update:
         try:
-            total_update_records = len(records_to_update)
-            logging.info(f"Total records to update: {total_update_records}")
-            
-            # Chunk the updates to prevent overloading a single request
             chunks = [records_to_update[i:i + 1000] for i in range(0, total_update_records, 1000)]
             for chunk in chunks:
                 for record in chunk:
@@ -225,5 +225,5 @@ def update_wellbore_data(supabase_client: Client):
             logging.info(f"Updated {total_update_records} records successfully.")
         except Exception as e:
             logging.error(f"Exception occurred during updates: {e}")
-            
-    logging.info("Update process completed.")
+    
+    logging.info(f"Update process completed: {total_new_records} new records, {total_update_records} updated records, {total_deleted_rows} rows deleted.")
