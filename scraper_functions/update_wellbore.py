@@ -199,22 +199,31 @@ def update_wellbore_data(supabase_client: Client):
     
     if records_to_update:
         try:
-            for record in records_to_update:
-                well_name = record['wlbwellborename']
-                update_dict = {k: v for k, v in record.items() if k != 'wlbwellborename'}
-                for key, value in update_dict.items():
-                    if isinstance(value, pd.Timestamp):
-                        update_dict[key] = value.strftime('%Y-%m-%d')
-                    elif pd.isna(value):
-                        update_dict[key] = None
-                
-                response = supabase_client.table('wellbore_data').update(update_dict).eq('wlbwellborename', well_name).execute()
-                if hasattr(response, 'data'):
-                    logging.info(f"Updated record {well_name} successfully.")
-                else:
-                    logging.error(f"Error updating record {well_name}: {response}")
-            logging.info(f"Updated {len(records_to_update)} records successfully.")
+            total_update_records = len(records_to_update)
+            logging.info(f"Total records to update: {total_update_records}")
+            
+            # Chunk the updates to prevent overloading a single request
+            chunks = [records_to_update[i:i + 1000] for i in range(0, total_update_records, 1000)]
+            for chunk in chunks:
+                for record in chunk:
+                    well_name = record['wlbwellborename']
+                    update_dict = {k: v for k, v in record.items() if k != 'wlbwellborename'}
+                    
+                    for key, value in update_dict.items():
+                        if isinstance(value, pd.Timestamp):
+                            update_dict[key] = value.strftime('%Y-%m-%d')
+                        elif pd.isna(value):
+                            update_dict[key] = None
+                    
+                    response = supabase_client.table('wellbore_data').update(update_dict).eq('wlbwellborename', well_name).execute()
+                    
+                    if hasattr(response, 'data'):
+                        logging.info(f"Updated record {well_name} successfully.")
+                    else:
+                        logging.error(f"Error updating record {well_name}: {response}")
+                    
+            logging.info(f"Updated {total_update_records} records successfully.")
         except Exception as e:
             logging.error(f"Exception occurred during updates: {e}")
-    
+            
     logging.info("Update process completed.")
