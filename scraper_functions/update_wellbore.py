@@ -167,15 +167,15 @@ def update_wellbore_data(supabase_client: Client):
             
             if needs_rescrape:
                 update_record = row_dict.copy()
-                update_record['status'] = 'pending'
+                update_record['status'] = 'waiting' #waiting -> reserved -> completed
                 update_record['needs_rescrape'] = True
-                update_record['last_scraped'] = None
+                update_record['last_scraped'] = current_date.strftime('%Y-%m-%d')
                 records_to_update.append(update_record)
         else:
             new_record = row.to_dict()
             new_record['last_scraped'] = current_date.strftime('%Y-%m-%d')
-            new_record['status'] = 'active'
-            new_record['needs_rescrape'] = False
+            new_record['status'] = 'waiting' #waiting -> reserved -> completed
+            new_record['needs_rescrape'] = True
             new_records.append(new_record)
     
     if new_records:
