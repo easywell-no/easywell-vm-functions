@@ -6,6 +6,7 @@ from supabase import Client, create_client
 import logging
 from io import StringIO
 import requests
+import json  # Added for JSON validation
 
 # Configure logging
 logging.basicConfig(
@@ -69,9 +70,12 @@ DATE_COLUMNS = [
 ]
 
 def normalize_value(value):
-    """Converts empty strings or NaNs to None."""
-    if pd.isnull(value) or str(value).strip().lower() in ['', 'nan', 'nat']:
+    """Converts empty strings, NaNs, and specific strings to None."""
+    if pd.isnull(value):
         return None
+    if isinstance(value, str):
+        if value.strip().lower() in ['', 'nan', 'nat', 'none', 'null']:
+            return None
     return value
 
 def convert_types(row):
@@ -134,7 +138,7 @@ def update_wellbore_data(supabase_client: Client):
     logging.info("Column names standardized to lowercase.")
     
     # Normalize data using apply instead of applymap to avoid FutureWarning
-    df = df.apply(lambda col: col.map(normalize_value))
+    df = df.applymap(normalize_value)
     logging.info("Data normalization completed.")
     
     # Convert data types
@@ -160,12 +164,26 @@ def update_wellbore_data(supabase_client: Client):
     # Convert 'date_last_updated_csv' to 'YYYY-MM-DD'
     df['date_last_updated_csv'] = pd.to_datetime(df['date_last_updated_csv'], dayfirst=True, errors='coerce').dt.strftime('%Y-%m-%d')
     
-    # Replace 'NaT' strings with None
-    df['date_last_updated_csv'] = df['date_last_updated_csv'].replace({'NaT': None, 'NaN': None})
+    # Replace 'NaT' and 'NaN' strings with None
+    df['date_last_updated_csv'] = df['date_last_updated_csv'].replace({'NaT': None, 'NaN': None, 'nan': None})
     
     # **New Step: Replace all remaining NaN values with None**
     df = df.where(pd.notnull(df), None)
     logging.info("Replaced all NaN and 'NaT' values with None.")
+    
+    # Optional: Verify that there are no 'NaN' strings left
+    # This is a safety check and can be removed after confirmation
+    for col in df.columns:
+        if df[col].dtype == object:
+            df[col] = df[col].replace({'nan': None, 'NaN': None, 'NaT': None, 'None': None, 'null': None})
+    
+    # Final check for any remaining 'NaN' or similar tokens
+    if df.isnull().values.any():
+        logging.info("DataFrame contains null values. They will be inserted as null in Supabase.")
+    
+    # Optional: Log a sample of the data to be inserted for verification
+    sample_records = df.head(5).to_dict(orient='records')
+    logging.debug(f"Sample records to insert: {json.dumps(sample_records, indent=2)}")
     
     # Fetch existing wellbore_data from Supabase
     try:
@@ -225,6 +243,20 @@ def update_wellbore_data(supabase_client: Client):
     # Insert new records
     if new_records:
         try:
+            # Convert datetime objects to strings if necessary
+            for record in new_records:
+                for key, value in record.items():
+                    if isinstance(value, pd.Timestamp):
+                        record[key] = value.strftime('%Y-%m-%d')
+            
+            # Validate JSON before insertion
+            for record in new_records:
+                try:
+                    json_record = json.dumps(record)
+                except TypeError as e:
+                    logging.error(f"Invalid JSON for record {record.get('wlbwellborename', 'Unknown')}: {e}")
+                    raise e
+            
             response = supabase_client.table('wellbore_data').insert(new_records).execute()
             # Check if Supabase returned any errors in the response
             if hasattr(response, 'status_code'):
@@ -247,6 +279,14 @@ def update_wellbore_data(supabase_client: Client):
                 # Remove the primary key from the update dictionary
                 update_dict = record.copy()
                 del update_dict['wlbwellborename']
+                
+                # Validate JSON before update
+                try:
+                    json_record = json.dumps(update_dict)
+                except TypeError as e:
+                    logging.error(f"Invalid JSON for update record {well_name}: {e}")
+                    continue  # Skip this record
+                
                 response = supabase_client.table('wellbore_data').update(update_dict).eq('wlbwellborename', well_name).execute()
                 # Check if Supabase returned any errors in the response
                 if hasattr(response, 'status_code'):
