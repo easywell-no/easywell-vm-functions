@@ -176,8 +176,17 @@ def update_wellbore_data(supabase_client: Client):
         logging.error(f"Exception occurred while fetching data from Supabase: {e}")
         return
     
-    # Create a dictionary for quick lookup
-    existing_dict = existing_data.set_index('wlbwellborename').to_dict('index')
+    # Handle empty existing_data
+    if existing_data.empty:
+        existing_dict = {}
+        logging.info("No existing data found in Supabase. All records will be inserted as new.")
+    else:
+        if 'wlbwellborename' in existing_data.columns:
+            existing_dict = existing_data.set_index('wlbwellborename').to_dict('index')
+            logging.info("'wlbwellborename' column found. Proceeding with update checks.")
+        else:
+            existing_dict = {}
+            logging.error("'wlbwellborename' column not found in existing data. All records will be treated as new.")
     
     # Prepare lists for new records and updates
     new_records = []
