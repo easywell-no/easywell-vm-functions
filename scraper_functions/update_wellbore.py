@@ -1,14 +1,5 @@
 import pandas as pd
 from datetime import datetime
-from supabase import create_client, Client
-import os
-
-# Define your Supabase credentials
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-# Initialize Supabase client
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Columns to ignore when checking for updates
 IGNORED_COLUMNS = [
