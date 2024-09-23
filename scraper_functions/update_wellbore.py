@@ -5,7 +5,7 @@ import logging
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Set to DEBUG to capture all logs
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
         logging.FileHandler("update_wellbore.log"),
@@ -176,9 +176,22 @@ def update_wellbore_data(supabase_client: Client):
     try:
         # Get all existing wells in the database
         existing_wells_response = supabase_client.table('wellbore_data').select('*').execute()
-        if existing_wells_response.status_code != 200:
-            logging.error(f"Error fetching existing wells: {existing_wells_response.status_code}")
+        
+        # Debug: Inspect the response object
+        logging.debug(f"Existing wells response attributes: {dir(existing_wells_response)}")
+        logging.debug(f"Existing wells response: {existing_wells_response}")
+        
+        # Attempt to access status_code
+        if hasattr(existing_wells_response, 'status_code'):
+            if existing_wells_response.status_code != 200:
+                logging.error(f"Error fetching existing wells: {existing_wells_response.status_code}")
+                return
+        elif hasattr(existing_wells_response, 'error') and existing_wells_response.error:
+            logging.error(f"Error fetching existing wells: {existing_wells_response.error}")
             return
+        else:
+            logging.warning("No error information available in the response.")
+        
         existing_wells = {well['wlbwellborename']: well for well in existing_wells_response.data}
         logging.info("Fetched existing wells successfully.")
     except Exception as e:
@@ -200,7 +213,11 @@ def update_wellbore_data(supabase_client: Client):
             if well_name in existing_wells:
                 current_well = existing_wells[well_name]
                 # Determine if any relevant columns have changed
-                changed = any(well_data.get(col) != current_well.get(col) for col in SUPABASE_COLUMNS if col not in IGNORED_COLUMNS)
+                changed = any(
+                    well_data.get(col) != current_well.get(col) 
+                    for col in SUPABASE_COLUMNS 
+                    if col not in IGNORED_COLUMNS
+                )
 
                 if changed:
                     logging.info(f"Well '{well_name}' has updates. Marking for re-scraping.")
@@ -223,11 +240,16 @@ def update_wellbore_data(supabase_client: Client):
     try:
         if new_wells:
             insert_response = supabase_client.table('wellbore_data').insert(new_wells).execute()
-            if insert_response.status_code != 200:
-                logging.error(f"Error inserting new wells: {insert_response.status_code}")
+            if hasattr(insert_response, 'status_code'):
+                if insert_response.status_code != 201:  # 201 Created is expected for inserts
+                    logging.error(f"Error inserting new wells: {insert_response.status_code}")
+                else:
+                    new_wells_count = len(new_wells)
+                    logging.info(f"Inserted {new_wells_count} new wells successfully.")
             else:
-                new_wells_count = len(new_wells)
-                logging.info(f"Inserted {new_wells_count} new wells successfully.")
+                logging.warning("Insert response does not have a 'status_code' attribute.")
+                if hasattr(insert_response, 'error') and insert_response.error:
+                    logging.error(f"Error inserting new wells: {insert_response.error}")
     except Exception as e:
         logging.error(f"Error during batch insert: {e}")
 
@@ -236,10 +258,15 @@ def update_wellbore_data(supabase_client: Client):
         if wells_to_update:
             for well_data in wells_to_update:
                 update_response = supabase_client.table('wellbore_data').update(well_data).eq('wlbwellborename', well_data['wlbwellborename']).execute()
-                if update_response.status_code != 200:
-                    logging.error(f"Error updating well '{well_data['wlbwellborename']}': {update_response.status_code}")
+                if hasattr(update_response, 'status_code'):
+                    if update_response.status_code != 200:
+                        logging.error(f"Error updating well '{well_data['wlbwellborename']}': {update_response.status_code}")
+                    else:
+                        updated_wells_count += 1
                 else:
-                    updated_wells_count += 1
+                    logging.warning("Update response does not have a 'status_code' attribute.")
+                    if hasattr(update_response, 'error') and update_response.error:
+                        logging.error(f"Error updating well '{well_data['wlbwellborename']}': {update_response.error}")
             logging.info(f"Updated {updated_wells_count} wells successfully.")
     except Exception as e:
         logging.error(f"Error during batch update: {e}")
