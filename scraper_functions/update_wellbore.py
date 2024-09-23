@@ -6,17 +6,55 @@ import requests
 from supabase import create_client, Client
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s',
-                    handlers=[logging.FileHandler("update_wellbore.log"), logging.StreamHandler()])
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler("update_wellbore.log"),
+        logging.StreamHandler()
+    ]
+)
 
 # Constants
 IGNORED_COLUMNS = ['last_scraped', 'status', 'needs_rescrape', 'datesyncNPD']
 SUPABASE_COLUMNS = [
-    # Same as before
+    'wlbwellborename', 'wlbwelltype', 'wlbwell', 'wlbdrillingoperator',
+    'wlbproductionlicence', 'wlbpurpose', 'wlbstatus', 'wlbcontent',
+    'wlbsubsea', 'wlbentrydate', 'wlbcompletiondate', 'wlbentrypredrilldate',
+    'wlbcomppredrilldate', 'wlbfield', 'wlbdrillpermit', 'wlbdiscovery',
+    'wlbdiscoverywellbore', 'wlbbottomholetemperature', 'wlbsitesurvey',
+    'wlbseismiclocation', 'wlbmaxinclation', 'wlbkellybushelevation',
+    'wlbfinalverticaldepth', 'wlbtotaldepth', 'wlbwaterdepth',
+    'wlbkickoffpoint', 'wlbageattd', 'wlbformationattd', 'wlbmainarea',
+    'wlbdrillingfacility', 'wlbfacilitytypedrilling',
+    'wlbdrillingfacilityfixedormoveable', 'wlbproductionfacility',
+    'wlblicensingactivity', 'wlbmultilateral', 'wlbpurposeplanned',
+    'wlbcontentplanned', 'wlbentryyear', 'wlbcompletionyear',
+    'wlbreclassfromwellbore', 'wlbreentryexplorationactivity',
+    'wlbplotsymbol', 'wlbformationwithhc1', 'wlbagewithhc1',
+    'wlbformationwithhc2', 'wlbagewithhc2', 'wlbformationwithhc3',
+    'wlbagewithhc3', 'wlbdrillingdays', 'wlbreentry',
+    'wlblicencetargetname', 'wlbpluggedabandondate', 'wlbpluggeddate',
+    'wlbgeodeticdatum', 'wlbnsdeg', 'wlbnsmin', 'wlbnssec',
+    'wlbnscode', 'wlbewdeg', 'wlbewmin', 'wlbewsec', 'wlbewcode',
+    'wlbnsdecdeg', 'wlbewdecdeg', 'wlbnsutm', 'wlbewutm', 'wlbutmzone',
+    'wlbnamepart1', 'wlbnamepart2', 'wlbdiskoswellboretype',
+    'wlbnamepart3', 'wlbnamepart4', 'wlbnamepart5', 'wlbnamepart6',
+    'wlbpressreleaseurl', 'wlbfactpageurl', 'wlbfactmapurl',
+    'wlbdiskoswellboretype1', 'wlbdiskoswellboreparent',
+    'wlbwdssqcdate', 'wlbreleaseddate', 'wlbdatereclass',
+    'wlbnpdidwellbore', 'prlnpdidprodlicencetarget',
+    'fclnpdidfacilityproducing', 'dscnpdiddiscovery', 'fldnpdidfield',
+    'fclnpdidfacilitydrilling', 'wlbnpdidwellborereclass',
+    'prlnpdidproductionlicence', 'wlbnpdidsitesurvey',
+    'wlbaliasname', 'wlbdateupdated', 'wlbdateupdatedmax',
+    'datesyncnpd'
 ]
-
 DATE_COLUMNS = [
-    # Same as before
+    'wlbentrydate', 'wlbcompletiondate', 'wlbentrypredrilldate',
+    'wlbcomppredrilldate', 'wlbwdssqcdate', 'wlbreleaseddate',
+    'wlbdatereclass', 'wlbpluggedabandondate', 'wlbpluggeddate',
+    'wlbdateupdated', 'wlbdateupdatedmax', 'datesyncnpd'
 ]
 
 def normalize_value(value):
@@ -36,7 +74,9 @@ def convert_types(row):
             else:
                 row[key] = None
         elif key == 'needs_rescrape':
-            row[key] = bool(value) if isinstance(value, bool) else (value.lower() in ['true', '1', 'yes'] if isinstance(value, str) else bool(value))
+            row[key] = bool(value) if isinstance(value, bool) else (
+                value.lower() in ['true', '1', 'yes'] if isinstance(value, str) else bool(value)
+            )
         elif value is not None and key not in SUPABASE_COLUMNS:
             try:
                 row[key] = int(value)
@@ -44,10 +84,32 @@ def convert_types(row):
                 row[key] = None
     return row
 
+def fetch_all_supabase_data(supabase_client: Client, table_name: str):
+    all_data = []
+    page_size = 1000
+    current_page = 0
+    while True:
+        try:
+            response = supabase_client.table(table_name)\
+                .select('*')\
+                .range(current_page * page_size, (current_page + 1) * page_size - 1)\
+                .execute()
+            if hasattr(response, 'data') and response.data:
+                all_data.extend(response.data)
+                logging.info(f"Fetched page {current_page + 1} with {len(response.data)} records.")
+                if len(response.data) < page_size:
+                    break
+                current_page += 1
+            else:
+                break
+        except Exception as e:
+            logging.error(f"Error fetching data from Supabase: {e}")
+            break
+    return pd.DataFrame(all_data)
+
 def update_wellbore_data(supabase_client: Client):
     logging.info("Starting update_wellbore_data process.")
     
-    # Fetch CSV from SODIR
     csv_url = 'https://factpages.sodir.no/public?/Factpages/external/tableview/wellbore_all_long&rs:Command=Render&rc:Toolbar=false&rc:Parameters=f&IpAddress=not_used&CultureCode=nb-no&rs:Format=CSV&Top100=false'
     
     try:
@@ -61,7 +123,7 @@ def update_wellbore_data(supabase_client: Client):
     try:
         csv_data = StringIO(response.text)
         df = pd.read_csv(csv_data)
-        logging.info(f"CSV data loaded successfully with {len(df)} records.")
+        logging.info("CSV data loaded into DataFrame successfully.")
     except Exception as e:
         logging.error(f"Error loading CSV data into DataFrame: {e}")
         return
@@ -94,12 +156,10 @@ def update_wellbore_data(supabase_client: Client):
         logging.info("DataFrame contains null values. They will be inserted as null in Supabase.")
     
     try:
-        response = supabase_client.table('wellbore_data').select('*').execute()
-        if hasattr(response, 'data'):
-            existing_data = pd.DataFrame(response.data)
-            logging.info(f"Fetched {len(existing_data)} records from Supabase successfully.")
+        existing_data = fetch_all_supabase_data(supabase_client, 'wellbore_data')
+        if not existing_data.empty:
+            logging.info(f"Fetched {len(existing_data)} existing records from Supabase successfully.")
         else:
-            existing_data = pd.DataFrame()
             logging.info("No existing data found in Supabase.")
     except Exception as e:
         logging.error(f"Exception occurred while fetching data from Supabase: {e}")
@@ -122,12 +182,8 @@ def update_wellbore_data(supabase_client: Client):
     current_date = datetime.now().date()
     three_months_ago = current_date - timedelta(days=90)
     
-    # Count wells being checked
-    wells_checked = 0
-    
     # Compare CSV with existing data
     for index, row in df.iterrows():
-        wells_checked += 1
         well_name = row['wlbwellborename']
         if well_name in existing_dict:
             existing_record = existing_dict[well_name]
@@ -154,7 +210,7 @@ def update_wellbore_data(supabase_client: Client):
     
     # Determine if any rows were deleted
     csv_wellbores = set(df['wlbwellborename'].unique())
-    db_wellbores = set(existing_data['wlbwellborename'].unique())
+    db_wellbores = set(existing_data['wlbwellborename'].unique()) if not existing_data.empty else set()
     deleted_wellbores = db_wellbores - csv_wellbores
     total_deleted_rows = len(deleted_wellbores)
     
@@ -194,9 +250,9 @@ def update_wellbore_data(supabase_client: Client):
                         logging.info(f"Updated record {well_name} successfully.")
                     else:
                         logging.error(f"Error updating record {well_name}: {response}")
-                    
+            
             logging.info(f"Updated {total_update_records} records successfully.")
         except Exception as e:
             logging.error(f"Exception occurred during updates: {e}")
     
-    logging.info(f"Checked {wells_checked} wells. Update process completed: {total_new_records} new records, {total_update_records} updated records, {total_deleted_rows} rows deleted.")
+    logging.info(f"Update process completed: {total_new_records} new records, {total_update_records} updated records, {total_deleted_rows} rows deleted.")
