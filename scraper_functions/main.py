@@ -5,7 +5,7 @@ import logging
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from update_wellbore import update_wellbore_data
-from scraper_functions.cleaner import cleanup
+from cleaner import cleanup
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s',
