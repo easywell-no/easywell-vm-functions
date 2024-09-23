@@ -1,7 +1,9 @@
 import pandas as pd
 from datetime import datetime
-from supabase import Client
+from supabase import Client, create_client
 import logging
+import os
+from dotenv import load_dotenv
 
 # Configure logging
 logging.basicConfig(
@@ -15,8 +17,10 @@ logging.basicConfig(
 
 # Columns to ignore when checking for updates
 IGNORED_COLUMNS = [
-    'datesyncNPD', 'last_scraped', 'status', 
-    'needs_rescrape', 'date_last_updated_csv'
+    'last_scraped', 
+    'status', 
+    'needs_rescrape', 
+    'date_last_updated_csv'
 ]
 
 # Mapping from CSV columns to SQL columns (if names differ)
@@ -173,6 +177,15 @@ def update_wellbore_data(supabase_client: Client):
         logging.error(f"Data type conversion failed: {e}")
         return
 
+    # Log the DataFrame to verify data before insertion
+    logging.debug(f"DataFrame before insertion:\n{df.head()}")
+
+    # Check for NULL in primary key
+    null_primary_keys = df['wlbwellborename'].isnull().sum()
+    if null_primary_keys > 0:
+        logging.error(f"There are {null_primary_keys} rows with NULL 'wlbwellborename'. These rows will be skipped.")
+        df = df[df['wlbwellborename'].notnull()]
+    
     try:
         # Get all existing wells in the database
         existing_wells_response = supabase_client.table('wellbore_data').select('*').execute()
@@ -181,19 +194,13 @@ def update_wellbore_data(supabase_client: Client):
         logging.debug(f"Existing wells response attributes: {dir(existing_wells_response)}")
         logging.debug(f"Existing wells response: {existing_wells_response}")
         
-        # Attempt to access status_code
-        if hasattr(existing_wells_response, 'status_code'):
-            if existing_wells_response.status_code != 200:
-                logging.error(f"Error fetching existing wells: {existing_wells_response.status_code}")
-                return
-        elif hasattr(existing_wells_response, 'error') and existing_wells_response.error:
+        # Check for error
+        if hasattr(existing_wells_response, 'error') and existing_wells_response.error:
             logging.error(f"Error fetching existing wells: {existing_wells_response.error}")
             return
         else:
-            logging.warning("No error information available in the response.")
-        
-        existing_wells = {well['wlbwellborename']: well for well in existing_wells_response.data}
-        logging.info("Fetched existing wells successfully.")
+            existing_wells = {well['wlbwellborename']: well for well in existing_wells_response.data}
+            logging.info("Fetched existing wells successfully.")
     except Exception as e:
         logging.error(f"Error processing existing wells: {e}")
         return
@@ -201,6 +208,9 @@ def update_wellbore_data(supabase_client: Client):
     # Collect batch data for insert and update
     new_wells = []
     wells_to_update = []
+    new_wells_count = 0
+    updated_wells_count = 0
+    deleted_wells_count = 0
 
     try:
         for index, row in df.iterrows():
@@ -236,43 +246,33 @@ def update_wellbore_data(supabase_client: Client):
         logging.error(f"Error processing wells for insert/update: {e}")
         return
 
-    # Perform batch insert of new wells
     try:
+        # Perform batch insert of new wells
         if new_wells:
             insert_response = supabase_client.table('wellbore_data').insert(new_wells).execute()
-            if hasattr(insert_response, 'status_code'):
-                if insert_response.status_code != 201:  # 201 Created is expected for inserts
-                    logging.error(f"Error inserting new wells: {insert_response.status_code}")
-                else:
-                    new_wells_count = len(new_wells)
-                    logging.info(f"Inserted {new_wells_count} new wells successfully.")
+            if hasattr(insert_response, 'error') and insert_response.error:
+                logging.error(f"Error inserting new wells: {insert_response.error}")
             else:
-                logging.warning("Insert response does not have a 'status_code' attribute.")
-                if hasattr(insert_response, 'error') and insert_response.error:
-                    logging.error(f"Error inserting new wells: {insert_response.error}")
+                new_wells_count = len(new_wells)
+                logging.info(f"Inserted {new_wells_count} new wells successfully.")
     except Exception as e:
         logging.error(f"Error during batch insert: {e}")
 
-    # Perform batch update of existing wells
     try:
+        # Perform batch update of existing wells
         if wells_to_update:
             for well_data in wells_to_update:
                 update_response = supabase_client.table('wellbore_data').update(well_data).eq('wlbwellborename', well_data['wlbwellborename']).execute()
-                if hasattr(update_response, 'status_code'):
-                    if update_response.status_code != 200:
-                        logging.error(f"Error updating well '{well_data['wlbwellborename']}': {update_response.status_code}")
-                    else:
-                        updated_wells_count += 1
+                if hasattr(update_response, 'error') and update_response.error:
+                    logging.error(f"Error updating well '{well_data['wlbwellborename']}': {update_response.error}")
                 else:
-                    logging.warning("Update response does not have a 'status_code' attribute.")
-                    if hasattr(update_response, 'error') and update_response.error:
-                        logging.error(f"Error updating well '{well_data['wlbwellborename']}': {update_response.error}")
+                    updated_wells_count += 1
             logging.info(f"Updated {updated_wells_count} wells successfully.")
     except Exception as e:
         logging.error(f"Error during batch update: {e}")
 
-    # Detect wells that were deleted from the CSV but still exist in the database
     try:
+        # Detect wells that were deleted from the CSV but still exist in the database
         csv_well_names = set(df['wlbwellborename'].dropna().unique())
         existing_well_names = set(existing_wells.keys())
         deleted_wells = existing_well_names - csv_well_names
