@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(me
                     handlers=[logging.FileHandler("main.log"), logging.StreamHandler()])
 
 # Load environment variables
-load_dotenv(dotenv_path='./scraper_functions/.env')
+load_dotenv(dotenv_path='.env')
 
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
