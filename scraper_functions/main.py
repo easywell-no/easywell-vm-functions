@@ -7,11 +7,6 @@ from supabase import create_client, Client
 # Load environment variables
 load_dotenv(dotenv_path='./scraper_functions/.env')
 
-# Print all environment variables to check if they were loaded
-for key, value in os.environ.items():
-    if "SUPABASE" in key:
-        print(f"{key}: {value}")
-
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 

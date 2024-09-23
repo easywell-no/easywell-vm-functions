@@ -2,7 +2,7 @@
 
 import pandas as pd
 from datetime import datetime
-from supabase import Client
+from supabase import Client, create_client
 import logging
 from io import StringIO
 import requests
@@ -163,8 +163,12 @@ def update_wellbore_data(supabase_client: Client):
     try:
         response = supabase_client.table('wellbore_data').select('*').execute()
         # Updated error handling based on supabase-py response structure
-        if response.status_code >= 400:
-            logging.error(f"Error fetching existing data from Supabase: {response.status_code} {response.status_message}")
+        if hasattr(response, 'status_code'):
+            if response.status_code >= 400:
+                logging.error(f"Error fetching existing data from Supabase: {response.status_code} {response.status_message}")
+                return
+        elif hasattr(response, 'error') and response.error:
+            logging.error(f"Error fetching existing data from Supabase: {response.error}")
             return
         existing_data = pd.DataFrame(response.data)
         logging.info("Fetched existing data from Supabase successfully.")
@@ -206,8 +210,13 @@ def update_wellbore_data(supabase_client: Client):
         try:
             response = supabase_client.table('wellbore_data').insert(new_records).execute()
             # Check if Supabase returned any errors in the response
-            if response.status_code >= 400:
-                logging.error(f"Error inserting new records: {response.status_code} {response.status_message}")
+            if hasattr(response, 'status_code'):
+                if response.status_code >= 400:
+                    logging.error(f"Error inserting new records: {response.status_code} {response.status_message}")
+                else:
+                    logging.info(f"Inserted {len(new_records)} new records successfully.")
+            elif hasattr(response, 'error') and response.error:
+                logging.error(f"Error inserting new records: {response.error}")
             else:
                 logging.info(f"Inserted {len(new_records)} new records successfully.")
         except Exception as e:
@@ -223,8 +232,11 @@ def update_wellbore_data(supabase_client: Client):
                 del update_dict['wlbwellborename']
                 response = supabase_client.table('wellbore_data').update(update_dict).eq('wlbwellborename', well_name).execute()
                 # Check if Supabase returned any errors in the response
-                if response.status_code >= 400:
-                    logging.error(f"Error updating record {well_name}: {response.status_code} {response.status_message}")
+                if hasattr(response, 'status_code'):
+                    if response.status_code >= 400:
+                        logging.error(f"Error updating record {well_name}: {response.status_code} {response.status_message}")
+                elif hasattr(response, 'error') and response.error:
+                    logging.error(f"Error updating record {well_name}: {response.error}")
             logging.info(f"Updated {len(records_to_update)} records successfully.")
         except Exception as e:
             logging.error(f"Exception occurred during updates: {e}")
