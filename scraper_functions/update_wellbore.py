@@ -5,6 +5,9 @@ import logging
 import os
 from dotenv import load_dotenv
 
+# Load environment variables from .env file
+load_dotenv()
+
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,  # Set to DEBUG to capture all logs
@@ -129,7 +132,7 @@ def update_wellbore_data(supabase_client: Client):
     try:
         # Load the CSV data from Sokkeldirektoratet
         csv_url = 'https://factpages.sodir.no/public?/Factpages/external/tableview/wellbore_all_long&rs:Command=Render&rc:Toolbar=false&rc:Parameters=f&IpAddress=not_used&CultureCode=nb-no&rs:Format=CSV&Top100=false'
-        df = pd.read_csv(csv_url, delimiter="\t")  # Corrected delimiter
+        df = pd.read_csv(csv_url)  # Changed delimiter to default ','
         logging.info("CSV data loaded successfully.")
     except Exception as e:
         logging.error(f"Failed to load CSV data: {e}")
@@ -137,7 +140,7 @@ def update_wellbore_data(supabase_client: Client):
 
     try:
         # Normalize data to avoid empty values causing errors
-        df = df.applymap(normalize_value)  # Using applymap
+        df = df.applymap(normalize_value)
         logging.info("Data normalization completed.")
     except Exception as e:
         logging.error(f"Data normalization failed: {e}")
@@ -202,7 +205,7 @@ def update_wellbore_data(supabase_client: Client):
             existing_wells = {well['wlbwellborename']: well for well in existing_wells_response.data}
             logging.info("Fetched existing wells successfully.")
     except Exception as e:
-        logging.error(f"Error processing existing wells: {e}")
+        logging.error(f"Error fetching existing wells: {e}")
         return
 
     # Collect batch data for insert and update
@@ -287,3 +290,21 @@ def update_wellbore_data(supabase_client: Client):
         logging.error(f"Error detecting deleted wells: {e}")
 
     logging.info(f"Update completed at {datetime.now()}. New: {new_wells_count}, Updated: {updated_wells_count}, Deleted: {deleted_wells_count}")
+
+def main():
+    # Initialize Supabase client
+    SUPABASE_URL = os.getenv('SUPABASE_URL')
+    SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        logging.error("Supabase URL or Key is not set in environment variables.")
+        return
+
+    supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    logging.info("Supabase client created successfully!")
+
+    # Run the update function
+    update_wellbore_data(supabase_client)
+
+if __name__ == "__main__":
+    main()
