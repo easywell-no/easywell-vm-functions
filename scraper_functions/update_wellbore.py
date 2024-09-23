@@ -132,8 +132,8 @@ def update_wellbore_data(supabase_client: Client):
     df.columns = df.columns.str.lower()
     logging.info("Column names standardized to lowercase.")
     
-    # Normalize data
-    df = df.applymap(normalize_value)
+    # Normalize data using apply instead of applymap to avoid FutureWarning
+    df = df.apply(lambda col: col.map(normalize_value))
     logging.info("Data normalization completed.")
     
     # Convert data types
@@ -162,8 +162,9 @@ def update_wellbore_data(supabase_client: Client):
     # Fetch existing wellbore_data from Supabase
     try:
         response = supabase_client.table('wellbore_data').select('*').execute()
-        if response.error:
-            logging.error(f"Error fetching existing data from Supabase: {response.error}")
+        # Updated error handling based on supabase-py response structure
+        if response.status_code >= 400:
+            logging.error(f"Error fetching existing data from Supabase: {response.status_code} {response.status_message}")
             return
         existing_data = pd.DataFrame(response.data)
         logging.info("Fetched existing data from Supabase successfully.")
@@ -204,8 +205,9 @@ def update_wellbore_data(supabase_client: Client):
     if new_records:
         try:
             response = supabase_client.table('wellbore_data').insert(new_records).execute()
-            if response.error:
-                logging.error(f"Error inserting new records: {response.error}")
+            # Check if Supabase returned any errors in the response
+            if response.status_code >= 400:
+                logging.error(f"Error inserting new records: {response.status_code} {response.status_message}")
             else:
                 logging.info(f"Inserted {len(new_records)} new records successfully.")
         except Exception as e:
@@ -220,11 +222,11 @@ def update_wellbore_data(supabase_client: Client):
                 update_dict = record.copy()
                 del update_dict['wlbwellborename']
                 response = supabase_client.table('wellbore_data').update(update_dict).eq('wlbwellborename', well_name).execute()
-                if response.error:
-                    logging.error(f"Error updating record {well_name}: {response.error}")
+                # Check if Supabase returned any errors in the response
+                if response.status_code >= 400:
+                    logging.error(f"Error updating record {well_name}: {response.status_code} {response.status_message}")
             logging.info(f"Updated {len(records_to_update)} records successfully.")
         except Exception as e:
             logging.error(f"Exception occurred during updates: {e}")
     
     logging.info("Update process completed.")
-
