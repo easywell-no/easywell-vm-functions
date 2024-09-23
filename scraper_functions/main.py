@@ -5,7 +5,7 @@ from scrape_factpages import scrape_fact_pages
 from supabase import create_client, Client
 
 # Load environment variables
-load_dotenv(dotenv_path='/home/scraper_functions/.env')
+load_dotenv(dotenv_path='./.env')
 
 # Access Supabase credentials from environment variables
 SUPABASE_URL = os.getenv('SUPABASE_URL')
