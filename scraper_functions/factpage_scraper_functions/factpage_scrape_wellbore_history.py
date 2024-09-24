@@ -1,12 +1,3 @@
-# factpage_scrape_wellbore_history.py
-
-import requests
-from bs4 import BeautifulSoup
-import logging
-from supabase import Client
-from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestException
-import time
-
 def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url: str):
     max_retries = 3
     for attempt in range(max_retries):
@@ -47,15 +38,11 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
     current_section = None
     current_content = ''
 
-    # Collect all elements within content_div
-    elements = content_div.find_all(['div', 'span'], recursive=True)
-
-    for element in elements:
-        if element.name == 'div':
-            continue  # Skip divs if they don't contain useful content
-        elif element.name == 'span':
-            text = element.get_text(strip=True)
-            style = element.get('style', '')
+    # Collect all relevant child elements
+    for child in content_div.find_all(['span', 'div'], recursive=True):
+        if child.name == 'span':
+            text = child.get_text(strip=True)
+            style = child.get('style', '')
             if 'font-weight:700' in style:
                 # Header detected
                 if current_section and current_content:
@@ -64,10 +51,13 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
                 current_section = text
             else:
                 current_content += ' ' + text
-        else:
-            continue  # Skip other elements
+        elif child.name == 'div':
+            # If we encounter a div that might contain relevant text
+            for sub_child in child.find_all('span', recursive=False):
+                text = sub_child.get_text(strip=True)
+                current_content += ' ' + text
 
-    # Save the last section
+    # Save the last section if it exists
     if current_section and current_content:
         sections.append((current_section, current_content.strip()))
 
