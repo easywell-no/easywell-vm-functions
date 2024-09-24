@@ -31,7 +31,7 @@ logging.info("Supabase client created successfully!")
 def main():
     try:
         # Call the update function
-        update_wellbore_data(supabase)
+        # update_wellbore_data(supabase)
         logging.info("Wellbore data update completed successfully.")
     except Exception as e:
         logging.error(f"An error occurred during wellbore data update: {e}")
