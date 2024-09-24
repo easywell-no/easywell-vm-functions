@@ -36,7 +36,7 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
 
     # For debugging: log all h2 texts found within li elements
     logging.debug(f"Searching for 'Brønnhistorie' or 'Well history' sections in {wlbwellborename}")
-    found_sections = []
+    bronn_section = None
     for li in soup.find_all('li'):
         h2 = li.find('h2')
         if h2:
@@ -44,10 +44,7 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
             logging.debug(f"Found h2 text: '{h2_text}'")
             if h2_text in ['Brønnhistorie', 'Well history', 'Wellbore history']:
                 bronn_section = li
-                found_sections.append(h2_text)
                 break
-    else:
-        bronn_section = None
 
     if not bronn_section:
         logging.warning(f"'Brønnhistorie' or 'Well history' section not found for {wlbwellborename}")
@@ -100,7 +97,7 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
                 'content': content
             }
             # Upsert operation: Update if exists, else insert
-            response = supabase.table('wellbore_history').upsert(data, on_conflict=['wlbwellborename', 'section']).execute()
+            response = supabase.table('wellbore_history').upsert(data, on_conflict='wlbwellborename,section').execute()
             if response.error:
                 logging.error(f"Error upserting data into wellbore_history for {wlbwellborename}: {response.error}")
             else:
