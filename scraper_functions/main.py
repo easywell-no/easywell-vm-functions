@@ -39,10 +39,9 @@ def main():
     try:
         # Call the factpage scraper
         scrape_factpages(supabase)
-        logging.info("Updated factpages successfully")
-
+        logging.info("Factpages scraped successfully.")
     except Exception as e:
-        logging.error(f"An error occured while scraping factpages: {e}")
+        logging.error(f"An error occurred while scraping factpages: {e}")
 
     try:
         # Call the cleaner function
