@@ -4,17 +4,18 @@ import sys
 import os
 
 # Add path to factpage_scraper_functions
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'factpage_scraper_functions')))
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(current_dir, 'factpage_scraper_functions'))
 from factpage_scrape_wellbore_history import scrape_wellbore_history
 
 def scrape_factpages(supabase: Client):
-    # Get the list of wellbores to scrape
-    response = supabase.table('wellbore_data').select('wlbwellborename', 'wlbfactpageurl').execute()
+    # Get the list of exploration wells to scrape
+    response = supabase.table('wellbore_data').select('wlbwellborename', 'wlbfactpageurl').eq('wlbwelltype', 'EXPLORATION').execute()
 
     # Check if the response has data
     if hasattr(response, 'data') and response.data:
         wellbores = response.data
-        logging.info(f"Fetched {len(wellbores)} wellbores to scrape.")
+        logging.info(f"Fetched {len(wellbores)} exploration wells to scrape.")
 
         for record in wellbores:
             wlbwellborename = record['wlbwellborename']
@@ -31,4 +32,4 @@ def scrape_factpages(supabase: Client):
             except Exception as e:
                 logging.error(f"An error occurred while scraping {wlbwellborename}: {e}")
     else:
-        logging.error(f"Error fetching wellbore data: {response}")
+        logging.error(f"Error fetching wellbore data or no data returned: {response}")
