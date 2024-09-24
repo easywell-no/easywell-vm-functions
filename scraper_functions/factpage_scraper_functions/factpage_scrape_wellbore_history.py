@@ -6,7 +6,9 @@ from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestExce
 import time
 
 def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url: str):
-    max_retries = 0
+    max_retries = 3  # Set to a positive integer
+    html_content = None  # Initialize html_content
+
     for attempt in range(max_retries):
         try:
             headers = {
@@ -23,12 +25,16 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
             if attempt < max_retries - 1:
                 logging.info(f"Retrying... ({attempt + 1}/{max_retries})")
                 time.sleep(2)  # Wait before retrying
-                continue
             else:
+                logging.error(f"Failed to fetch factpage after {max_retries} attempts for {wlbwellborename}")
                 return
         except RequestException as e:
             logging.error(f"Error fetching the factpage for {wlbwellborename}: {e}")
             return
+
+    if not html_content:
+        logging.error(f"No HTML content retrieved for {wlbwellborename}")
+        return
 
     soup = BeautifulSoup(html_content, 'html.parser')
 
