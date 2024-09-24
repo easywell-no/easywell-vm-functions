@@ -32,7 +32,14 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
 
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    bronn_section = soup.find('li', id='brønnhistorie')
+    # Find the 'li' element containing the 'Brønnhistorie' section by searching for the 'h2' tag
+    bronn_section = None
+    for li in soup.find_all('li'):
+        h2 = li.find('h2')
+        if h2 and h2.get_text(strip=True) == 'Brønnhistorie':
+            bronn_section = li
+            break
+
     if not bronn_section:
         logging.warning(f"'Brønnhistorie' section not found for {wlbwellborename}")
         return
