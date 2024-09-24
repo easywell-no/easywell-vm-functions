@@ -1,3 +1,12 @@
+# factpage_scrape_wellbore_history.py
+
+import requests
+from bs4 import BeautifulSoup
+import logging
+from supabase import Client
+from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestException
+import time
+
 def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url: str):
     max_retries = 3
     for attempt in range(max_retries):
