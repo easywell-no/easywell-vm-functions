@@ -1,5 +1,3 @@
-# factpage_scrape_wellbore_history.py
-
 import requests
 from bs4 import BeautifulSoup
 import logging
@@ -8,7 +6,7 @@ from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestExce
 import time
 
 def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url: str):
-    max_retries = 3
+    max_retries = 0
     for attempt in range(max_retries):
         try:
             headers = {
@@ -91,16 +89,27 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
     # Insert or update the database
     for section, content in sections:
         try:
+            # Query existing content
+            existing_record = supabase.table('wellbore_history') \
+                .select('content') \
+                .eq('wlbwellborename', wlbwellborename) \
+                .eq('section', section) \
+                .execute()
+            existing_content = existing_record.data[0]['content'] if existing_record.data else None
+
+            if existing_content == content:
+                logging.info(f"No changes detected for {wlbwellborename} section '{section}', skipping update.")
+                continue  # Skip to next section
+
             data = {
                 'wlbwellborename': wlbwellborename,
                 'section': section,
                 'content': content
             }
             # Upsert operation: Update if exists, else insert
-            response = supabase.table('wellbore_history').upsert(data, on_conflict='wlbwellborename,section').execute()
-            if response.error:
-                logging.error(f"Error upserting data into wellbore_history for {wlbwellborename}: {response.error}")
-            else:
-                logging.info(f"Upserted {section} for {wlbwellborename}")
+            response = supabase.table('wellbore_history') \
+                .upsert(data, on_conflict='wlbwellborename,section') \
+                .execute()
+            logging.info(f"Upserted {section} for {wlbwellborename}")
         except Exception as e:
             logging.error(f"Exception during database operation for {wlbwellborename}: {e}")
