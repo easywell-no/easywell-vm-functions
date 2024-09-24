@@ -12,7 +12,8 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
     for attempt in range(max_retries):
         try:
             headers = {
-                'User-Agent': 'Mozilla/5.0'
+                'User-Agent': 'Mozilla/5.0',
+                'Accept-Language': 'no'  # Request Norwegian language content
             }
             response = requests.get(factpage_url, headers=headers, timeout=10)
             response.raise_for_status()
@@ -24,6 +25,7 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
             if attempt < max_retries - 1:
                 logging.info(f"Retrying... ({attempt + 1}/{max_retries})")
                 time.sleep(2)  # Wait before retrying
+                continue
             else:
                 return
         except RequestException as e:
@@ -32,21 +34,30 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
 
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # Find the 'li' element containing the 'Brønnhistorie' section by searching for the 'h2' tag
-    bronn_section = None
+    # For debugging: log all h2 texts found within li elements
+    logging.debug(f"Searching for 'Brønnhistorie' or 'Well history' sections in {wlbwellborename}")
+    found_sections = []
     for li in soup.find_all('li'):
         h2 = li.find('h2')
-        if h2 and h2.get_text(strip=True) == 'Brønnhistorie':
-            bronn_section = li
-            break
+        if h2:
+            h2_text = h2.get_text(strip=True)
+            logging.debug(f"Found h2 text: '{h2_text}'")
+            if h2_text in ['Brønnhistorie', 'Well history', 'Wellbore history']:
+                bronn_section = li
+                found_sections.append(h2_text)
+                break
+    else:
+        bronn_section = None
 
     if not bronn_section:
-        logging.warning(f"'Brønnhistorie' section not found for {wlbwellborename}")
+        logging.warning(f"'Brønnhistorie' or 'Well history' section not found for {wlbwellborename}")
         return
+    else:
+        logging.info(f"Found '{h2_text}' section for {wlbwellborename}")
 
     content_div = bronn_section.find('div', class_='uk-accordion-content')
     if not content_div:
-        logging.warning(f"No content found in 'Brønnhistorie' for {wlbwellborename}")
+        logging.warning(f"No content found in '{h2_text}' for {wlbwellborename}")
         return
 
     # Initialize variables
@@ -76,6 +87,9 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
     # Save the last section if it exists
     if current_section and current_content:
         sections.append((current_section, current_content.strip()))
+
+    # Log the sections found
+    logging.debug(f"Sections found for {wlbwellborename}: {[(s[0], len(s[1])) for s in sections]}")
 
     # Insert or update the database
     for section, content in sections:
