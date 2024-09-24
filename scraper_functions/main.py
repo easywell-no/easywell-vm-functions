@@ -1,9 +1,14 @@
 import os
 import logging
+import sys
+
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from update_wellbore import update_wellbore_data
+from scrape_factpages import scrape_factpages
 from cleaner import cleanup
+
+sys.path.append("..")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s',
@@ -30,7 +35,15 @@ def main():
         logging.info("Wellbore data update completed successfully.")
     except Exception as e:
         logging.error(f"An error occurred during wellbore data update: {e}")
-    
+
+    try:
+        # Call the factpage scraper
+        scrape_factpages(supabase)
+        logging.info("Updated factpages successfully")
+
+    except Exception as e:
+        logging.error(f"An error occured while scraping factpages: {e}")
+
     try:
         # Call the cleaner function
         cleanup()

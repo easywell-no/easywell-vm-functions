@@ -1,69 +1,27 @@
-import requests
-from bs4 import BeautifulSoup
-from datetime import datetime
+# scrape_factpages.py
 
-def scrape_fact_pages():
-    pending_wells_response = supabase.table('wellbore_data').select('wlbWellboreName', 'factpage_url').eq('status', 'pending').execute()
+import logging
+from supabase import Client
+from factpage_scrape_wellbore_history import scrape_wellbore_history
 
-    for well in pending_wells_response.data:
-        well_name = well['wlbWellboreName']
-        factpage_url = well['factpage_url']
-        scrape_fact_page(well_name, factpage_url)
+def scrape_factpages(supabase: Client):
+    # Get the list of wellbores to scrape
+    wellbores = supabase.table('wellbore_data').select('wlbwellborename', 'wlbfactpageurl').execute()
+    if wellbores.error:
+        logging.error(f"Error fetching wellbore data: {wellbores.error}")
+        return
 
-        supabase.table('wellbore_data').update({
-            'status': 'scraped',
-            'last_scraped': datetime.now(),
-            'needs_rescrape': False
-        }).eq('wlbWellboreName', well_name).execute()
+    for record in wellbores.data:
+        wlbwellborename = record['wlbwellborename']
+        factpage_url = record['wlbfactpageurl']
 
-def scrape_fact_page(well_name, factpage_url):
-    try:
-        response = requests.get(factpage_url)
-        response.raise_for_status()
+        if not factpage_url:
+            logging.warning(f"No factpage URL for {wlbwellborename}")
+            continue
 
-        soup = BeautifulSoup(response.content, 'html.parser')
+        logging.info(f"Scraping factpage for {wlbwellborename}")
 
-        wellbore_data = {
-            'wlbwellborename': well_name,
-            'wellbore_history': scrape_section(soup, 'Wellbore history'),
-            'operations_and_results': scrape_section(soup, 'Operations and results'),
-            'testing': scrape_section(soup, 'Testing'),
-            'cuttings_info': scrape_cuttings(soup),
-            'casing_tests': scrape_casing_tests(soup),
-            'logs_info': scrape_logs(soup),
-            'lithostratigraphy': scrape_lithostratigraphy(soup),
-            'geochemical_info': scrape_section(soup, 'Geochemical information'),
-            'drilling_mud_info': scrape_drilling_mud(soup),
-            'palynological_slides': scrape_palynological_slides(soup),
-            'thin_sections': scrape_thin_sections(soup)
-        }
-
-        supabase.table('wellbore_info').upsert(wellbore_data).execute()
-        print(f"Scraped and saved data for well: {well_name}")
-    except Exception as e:
-        print(f"Failed to scrape {well_name}: {str(e)}")
-
-def scrape_section(soup, section_name):
-    section = soup.find('li', id=section_name.lower().replace(' ', '-'))
-    return section.get_text(strip=True) if section else None
-
-def scrape_cuttings(soup):
-    return "Cuttings data scraped"
-
-def scrape_casing_tests(soup):
-    return "Casing tests data scraped"
-
-def scrape_logs(soup):
-    return "Logs data scraped"
-
-def scrape_lithostratigraphy(soup):
-    return "Lithostratigraphy data scraped"
-
-def scrape_drilling_mud(soup):
-    return "Drilling mud data scraped"
-
-def scrape_palynological_slides(soup):
-    return "Palynological slides data scraped"
-
-def scrape_thin_sections(soup):
-    return "Thin sections data scraped"
+        try:
+            scrape_wellbore_history(supabase, wlbwellborename, factpage_url)
+        except Exception as e:
+            logging.error(f"An error occurred while scraping {wlbwellborename}: {e}")
