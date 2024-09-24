@@ -110,10 +110,8 @@ def fetch_all_supabase_data(supabase_client: Client, table_name: str):
 def update_wellbore_data(supabase_client: Client):
     logging.info("Starting update_wellbore_data process.")
     
-    # URL for fetching CSV data
     csv_url = 'https://factpages.sodir.no/public?/Factpages/external/tableview/wellbore_all_long&rs:Command=Render&rc:Toolbar=false&rc:Parameters=f&IpAddress=not_used&CultureCode=nb-no&rs:Format=CSV&Top100=false'
     
-    # Fetch CSV data from the source
     try:
         response = requests.get(csv_url)
         response.raise_for_status()
@@ -122,7 +120,6 @@ def update_wellbore_data(supabase_client: Client):
         logging.error(f"Error fetching CSV data: {e}")
         return
     
-    # Load CSV data into a DataFrame
     try:
         csv_data = StringIO(response.text)
         df = pd.read_csv(csv_data)
@@ -131,36 +128,34 @@ def update_wellbore_data(supabase_client: Client):
         logging.error(f"Error loading CSV data into DataFrame: {e}")
         return
     
-    # Standardize column names
     df.columns = df.columns.str.lower()
     logging.info("Column names standardized to lowercase.")
     
-    # Normalize values (convert 'nan', 'NaT', etc. to None)
-    df = df.applymap(normalize_value)
+    df = df.apply(lambda x: x.map(normalize_value))
     logging.info("Data normalization completed.")
     
-    # Convert data types (for dates, etc.)
     df = df.apply(convert_types, axis=1)
     logging.info("Data type conversion completed.")
     
-    # Ensure all necessary columns for Supabase are present
     for col in SUPABASE_COLUMNS:
         if col not in df.columns:
             df[col] = None
     logging.info("Ensured all Supabase columns are present in DataFrame.")
     
-    # Select relevant columns
     df = df[SUPABASE_COLUMNS]
     logging.info("Selected relevant Supabase columns.")
     
-    # Replace NaN values, 'None', 'NaT', and similar with None
+    # Replace NaN and NaT with None
     df = df.where(pd.notnull(df), None)
-    for col in df.columns:
-        if df[col].dtype == object:
-            df[col] = df[col].replace({'nan': None, 'NaN': None, 'NaT': None, 'None': None, 'null': None})
     logging.info("Replaced all invalid placeholder values with None.")
     
-    # Fetch existing data from Supabase
+    # Function to clean a dictionary by replacing NaN with None
+    def clean_dict(d):
+        return {k: (v if pd.notna(v) else None) for k, v in d.items()}
+    
+    if df.isnull().values.any():
+        logging.info("DataFrame contains null values. They will be inserted as null in Supabase.")
+    
     try:
         existing_data = fetch_all_supabase_data(supabase_client, 'wellbore_data')
         if not existing_data.empty:
@@ -171,22 +166,30 @@ def update_wellbore_data(supabase_client: Client):
         logging.error(f"Exception occurred while fetching data from Supabase: {e}")
         return
     
-    # Prepare new and updated records
-    existing_dict = existing_data.set_index('wlbwellborename').to_dict('index') if not existing_data.empty else {}
+    if existing_data.empty:
+        existing_dict = {}
+        logging.info("No existing data found in Supabase. All records will be inserted as new.")
+    else:
+        if 'wlbwellborename' in existing_data.columns:
+            existing_dict = existing_data.set_index('wlbwellborename').to_dict('index')
+            logging.info("'wlbwellborename' column found. Proceeding with update checks.")
+        else:
+            existing_dict = {}
+            logging.error("'wlbwellborename' column not found in existing data. All records will be treated as new.")
+    
     new_records = []
     records_to_update = []
     
     current_date = datetime.now().date()
     three_months_ago = current_date - timedelta(days=90)
     
+    # Compare CSV with existing data
     for index, row in df.iterrows():
         well_name = row['wlbwellborename']
-        row_dict = row.to_dict()
-
         if well_name in existing_dict:
-            # Compare with existing records
             existing_record = existing_dict[well_name]
-            relevant_columns = {k: v for k, v in row_dict.items() if k not in IGNORED_COLUMNS}
+            row_dict = row.to_dict()
+            relevant_columns = {k: v for k, v in row_dict.items() if k not in IGNORED_COLUMNS and k != 'wlbwellborename'}
             existing_relevant = {k: existing_record.get(k) for k in relevant_columns.keys()}
             
             needs_update = relevant_columns != existing_relevant
@@ -194,23 +197,31 @@ def update_wellbore_data(supabase_client: Client):
             needs_rescrape = needs_update or (last_scraped and last_scraped < three_months_ago)
             
             if needs_rescrape:
-                update_record = row_dict.copy()
-                update_record['status'] = 'waiting'
+                update_record = clean_dict(row_dict.copy())
+                update_record['status'] = 'waiting'  # waiting -> reserved -> completed
                 update_record['needs_rescrape'] = True
                 update_record['last_scraped'] = current_date.strftime('%Y-%m-%d')
                 records_to_update.append(update_record)
         else:
-            # New record
-            new_record = row_dict.copy()
-            new_record['status'] = 'waiting'
-            new_record['needs_rescrape'] = True
+            new_record = clean_dict(row.to_dict())
             new_record['last_scraped'] = current_date.strftime('%Y-%m-%d')
+            new_record['status'] = 'waiting'  # waiting -> reserved -> completed
+            new_record['needs_rescrape'] = True
             new_records.append(new_record)
     
-    # Handle insertion of new records
+    # Determine if any rows were deleted
+    csv_wellbores = set(df['wlbwellborename'].unique())
+    db_wellbores = set(existing_data['wlbwellborename'].unique()) if not existing_data.empty else set()
+    deleted_wellbores = db_wellbores - csv_wellbores
+    total_deleted_rows = len(deleted_wellbores)
+    
+    # Insert new records
+    total_new_records = len(new_records)
     if new_records:
         try:
-            chunks = [new_records[i:i + 1000] for i in range(0, len(new_records), 1000)]
+            # Optionally log the first new record for debugging
+            logging.info(f"First new record to insert: {new_records[0]}")
+            chunks = [new_records[i:i + 1000] for i in range(0, total_new_records, 1000)]
             for chunk in chunks:
                 response = supabase_client.table('wellbore_data').insert(chunk).execute()
                 if hasattr(response, 'data'):
@@ -220,21 +231,30 @@ def update_wellbore_data(supabase_client: Client):
         except Exception as e:
             logging.error(f"Exception occurred during insertion: {e}")
     
-    # Handle updates of existing records
+    # Update existing records
+    total_update_records = len(records_to_update)
     if records_to_update:
         try:
-            chunks = [records_to_update[i:i + 1000] for i in range(0, len(records_to_update), 1000)]
+            chunks = [records_to_update[i:i + 1000] for i in range(0, total_update_records, 1000)]
             for chunk in chunks:
                 for record in chunk:
                     well_name = record['wlbwellborename']
                     update_dict = {k: v for k, v in record.items() if k != 'wlbwellborename'}
+                    update_dict = clean_dict(update_dict)
+                    
+                    for key, value in update_dict.items():
+                        if isinstance(value, pd.Timestamp):
+                            update_dict[key] = value.strftime('%Y-%m-%d')
+                    
                     response = supabase_client.table('wellbore_data').update(update_dict).eq('wlbwellborename', well_name).execute()
+                    
                     if hasattr(response, 'data'):
                         logging.info(f"Updated record {well_name} successfully.")
                     else:
                         logging.error(f"Error updating record {well_name}: {response}")
-            logging.info(f"Updated {len(records_to_update)} records successfully.")
+            
+            logging.info(f"Updated {total_update_records} records successfully.")
         except Exception as e:
             logging.error(f"Exception occurred during updates: {e}")
     
-    logging.info(f"Update process completed: {len(new_records)} new records, {len(records_to_update)} updated records.")
+    logging.info(f"Update process completed: {total_new_records} new records, {total_update_records} updated records, {total_deleted_rows} rows deleted.")
