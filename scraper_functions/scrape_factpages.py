@@ -1,7 +1,11 @@
-# scrape_factpages.py
-
 import logging
 from supabase import Client
+import sys
+import os
+
+# Correct the path to factpage_scraper_functions
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'factpage_scraper_functions')))
+
 from factpage_scrape_wellbore_history import scrape_wellbore_history
 
 def scrape_factpages(supabase: Client):
