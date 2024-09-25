@@ -6,7 +6,7 @@ from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestExce
 import time
 
 def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url: str):
-    max_retries = 3  # Set to a positive integer
+    max_retries = 1  # Set to a positive integer
     html_content = None  # Initialize html_content
 
     for attempt in range(max_retries):
