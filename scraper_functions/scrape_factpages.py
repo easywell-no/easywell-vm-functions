@@ -10,7 +10,7 @@ sys.path.append(os.path.join(current_dir, 'factpage_scraper_functions'))
 from factpage_scrape_wellbore_history import scrape_wellbore_history
 from factpage_scrape_lithostratigraphy import scrape_lithostratigraphy
 from factpage_scrape_casing_and_tests import scrape_casing_and_tests
-from factpage_scraper_drilling_fluid import scrape_drilling_fluid
+from factpage_scrape_drilling_fluid import scrape_drilling_fluid
 
 def scrape_factpages(supabase: Client):
     # Get the list of exploration wells to scrape
