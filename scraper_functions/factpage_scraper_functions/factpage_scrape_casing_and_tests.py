@@ -85,34 +85,36 @@ def scrape_casing_and_tests(supabase: Client, wlbwellborename: str, factpage_url
         mud_weight_text = mud_weight_cell.get_text(strip=True)
         test_type = test_type_cell.get_text(strip=True)
 
-        # Convert numeric values to floats, handle any parsing issues
+        # Updated parse_float function
         def parse_float(text):
             if not text:
                 return None
             try:
-                # Remove any spaces in the number (e.g., '13 3/8')
-                text = text.replace(' ', '')
-                # Handle fractions (e.g., '13 3/8' -> '13.375')
-                if '/' in text:
-                    whole_part = ''
-                    frac_part = text
-                    for i, c in enumerate(text):
-                        if c.isdigit() or c == '.':
-                            whole_part += c
-                        else:
-                            frac_part = text[i:]
-                            break
-                    if whole_part == '':
-                        whole_part = '0'
-                    frac = frac_part.strip()
-                    if '/' in frac:
-                        numerator, denominator = frac.split('/')
+                text = text.strip()
+                # Handle fractions (e.g., '13 3/8' -> 13.375)
+                if ' ' in text:
+                    # Split into whole number and fraction
+                    whole_part, frac_part = text.split(' ', 1)
+                    whole_part = float(whole_part)
+                    frac_part = frac_part.strip()
+                    if '/' in frac_part:
+                        numerator, denominator = frac_part.split('/', 1)
                         numerator = float(numerator)
                         denominator = float(denominator)
-                        value = float(whole_part) + numerator / denominator
+                        frac_value = numerator / denominator
+                        value = whole_part + frac_value
                     else:
-                        value = float(text)
+                        # Not a fraction, try to parse as float
+                        frac_value = float(frac_part)
+                        value = whole_part + frac_value
+                elif '/' in text:
+                    # No whole number, only fraction (e.g., '3/8')
+                    numerator, denominator = text.split('/', 1)
+                    numerator = float(numerator)
+                    denominator = float(denominator)
+                    value = numerator / denominator
                 else:
+                    # Regular float
                     value = float(text.replace(',', '.'))
                 return value
             except ValueError:
