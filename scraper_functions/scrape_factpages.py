@@ -9,6 +9,7 @@ sys.path.append(os.path.join(current_dir, 'factpage_scraper_functions'))
 
 from factpage_scrape_wellbore_history import scrape_wellbore_history
 from factpage_scrape_lithostratigraphy import scrape_lithostratigraphy
+from factpage_scrape_casing_and_tests import scrape_casing_and_tests
 
 def scrape_factpages(supabase: Client):
     # Get the list of exploration wells to scrape
@@ -32,6 +33,7 @@ def scrape_factpages(supabase: Client):
             try:
                 scrape_wellbore_history(supabase, wlbwellborename, factpage_url)
                 scrape_lithostratigraphy(supabase, wlbwellborename, factpage_url)
+                scrape_casing_and_tests(supabase, wlbwellborename, factpage_url)
             except Exception as e:
                 logging.error(f"An error occurred while scraping {wlbwellborename}: {e}")
     else:
