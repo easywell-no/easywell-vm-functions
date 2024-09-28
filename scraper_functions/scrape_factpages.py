@@ -17,9 +17,9 @@ def scrape_factpages(supabase: Client):
     logging.info("Starting scrape_factpages process.")
 
     try:
-        # Step 1: Select wells that need rescraping and are in 'waiting' status
+        # Step 1: Select wells that need rescraping, are in 'waiting' status, and are exploration wells
         response = supabase.table('wellbore_data')\
-            .select('wlbwellborename, wlbfactpageurl')\
+            .select('wlbwellborename, wlbfactpageurl, wlbwelltype')\
             .eq('needs_rescrape', True)\
             .eq('status', 'waiting')\
             .execute()
@@ -38,13 +38,31 @@ def scrape_factpages(supabase: Client):
     for well in wells_to_scrape:
         wlbwellborename = well.get('wlbwellborename')
         factpage_url = well.get('wlbfactpageurl')
+        well_type = well.get('wlbwelltype')
 
         if not factpage_url:
             logging.warning(f"No factpage URL for wellbore '{wlbwellborename}'. Skipping.")
-            # Optionally, you can update the status to 'error' here if needed
             continue
 
         logging.info(f"Processing wellbore '{wlbwellborename}'.")
+
+        if well_type != 'EXPLORATION':
+            # If it's not an exploration well, mark as completed and skip scraping
+            try:
+                logging.info(f"Well '{wlbwellborename}' is not an exploration well. Marking as 'completed'.")
+                non_exploration_update_response = supabase.table('wellbore_data')\
+                    .update({'status': 'completed', 'needs_rescrape': False})\
+                    .eq('wlbwellborename', wlbwellborename)\
+                    .execute()
+
+                # Check if the update was successful
+                if hasattr(non_exploration_update_response, 'status_code') and non_exploration_update_response.status_code >= 400:
+                    logging.error(f"Failed to mark well '{wlbwellborename}' as completed. Status Code: {non_exploration_update_response.status_code}, Response: {non_exploration_update_response}")
+                else:
+                    logging.info(f"Marked well '{wlbwellborename}' as completed.")
+            except Exception as update_exception:
+                logging.error(f"Failed to update non-exploration well '{wlbwellborename}' to 'completed': {update_exception}", exc_info=True)
+            continue
 
         try:
             # Step 2: Reserve the well for scraping by updating its status to 'reserved'
