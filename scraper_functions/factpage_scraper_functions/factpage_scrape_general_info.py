@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+import logging
 from supabase import Client
 from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestException
 import time
@@ -22,14 +23,16 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
             html_content = response.text
             break
         except (HTTPError, ConnectionError, Timeout, RequestException) as e:
+            logging.error(f"Error fetching the factpage for {wlbwellborename}: {e}")
             if attempt < max_retries - 1:
+                logging.info(f"Retrying... ({attempt + 1}/{max_retries})")
                 time.sleep(2)  # Wait before retrying
             else:
-                print(f"Failed to fetch page after {max_retries} attempts: {e}")
+                logging.error(f"Failed to fetch factpage after {max_retries} attempts for {wlbwellborename}")
                 return
 
     if not html_content:
-        print("No HTML content retrieved")
+        logging.error(f"No HTML content retrieved for {wlbwellborename}")
         return
 
     soup = BeautifulSoup(html_content, 'html.parser')
@@ -81,20 +84,33 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
     # Helper function to parse date strings
     def parse_date(date_str):
         try:
-            return datetime.strptime(date_str, '%d.%m.%Y').strftime('%Y-%m-%d')
+            return datetime.strptime(date_str.strip(), '%d.%m.%Y').strftime('%Y-%m-%d')
         except ValueError:
             return None
 
+    # Find the general info section
+    general_info_section = None
+    for li in soup.find_all('li'):
+        h2 = li.find('h2')
+        if h2 and h2.get_text(strip=True) in ['Generelt', 'General']:
+            general_info_section = li
+            break
+
+    if not general_info_section:
+        logging.warning(f"General info section not found for {wlbwellborename}")
+        return
+    else:
+        logging.info(f"Found general info section for {wlbwellborename}")
+
     # Find all rows in the general info section
-    rows = soup.find_all('tr', class_=lambda x: x and x.startswith('tooltip-boundary-'))
+    rows = general_info_section.find_all('tr')
 
     for row in rows:
-        label_cell = row.find('td', class_=lambda x: x and x.endswith('cl'))
-        value_cell = row.find('td', class_=lambda x: x and x.endswith('c'))
-
-        if not label_cell or not value_cell:
+        cells = row.find_all('td')
+        if len(cells) != 2:
             continue
 
+        label_cell, value_cell = cells
         label_text = label_cell.get_text(separator=' ', strip=True).rstrip(':')
         value_text = value_cell.get_text(separator=' ', strip=True)
 
@@ -103,27 +119,30 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
             if column in ['borestart', 'boreslutt', 'frigitt_dato', 'publiseringsdato']:
                 data[column] = parse_date(value_text)
             elif column in ['gjenapnet', 'funnbronnbane']:
-                data[column] = True if value_text.strip().upper() == "YES" else False
+                data[column] = value_text.strip().upper() == "YES"
             elif column in ['boredager', 'maks_inklinasjon_deg', 'utm_sone', 'npdid_bronnbanen']:
                 try:
-                    data[column] = int(value_text)
+                    data[column] = int(value_text.replace(',', '').replace(' ', ''))
                 except ValueError:
                     data[column] = None
             elif column in ['avstand_boredekk_m_m', 'vanndybde_m_m',
                            'totalt_maalt_dybde_md_m_rkb', 'totalt_vertikalt_dybde_tvd_m_rkb',
                            'temperatur_bunn_bronnbane_c', 'ns_utm_m', 'ov_utm_m']:
                 try:
-                    data[column] = float(value_text.replace(',', '.'))
+                    data[column] = float(value_text.replace(',', '.').replace(' ', ''))
                 except ValueError:
                     data[column] = None
             else:
                 data[column] = value_text
 
+    # Log the data before upserting
+    logging.debug(f"Data to be upserted for {wlbwellborename}: {data}")
+
     # Upsert the data into the 'general_info' table
     try:
         result = supabase.table('general_info').upsert(data, on_conflict='wlbwellborename').execute()
-        print(f"Upserted data for {wlbwellborename}")
+        logging.info(f"Upserted data for {wlbwellborename}")
     except Exception as e:
-        print(f"Error upserting data for {wlbwellborename}: {e}")
+        logging.error(f"Error upserting data for {wlbwellborename}: {e}")
 
     return data  # Return the scraped data for debugging purposes
