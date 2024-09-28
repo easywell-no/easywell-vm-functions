@@ -1,10 +1,10 @@
-import logging
-from bs4 import BeautifulSoup
 import requests
+from bs4 import BeautifulSoup
+import logging
 from supabase import Client
 from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestException
+from datetime import datetime
 import time
-import re
 
 def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: str):
     max_retries = 3
@@ -39,17 +39,26 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
 
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # Find the 'Generell informasjon' table
-    general_info_table = soup.find('table', class_='general-info-table')
+    # Debug: Log all table classes
+    for table in soup.find_all('table'):
+        logging.debug(f"Found table with classes: {table.get('class')}")
+
+    # Locate the table by searching for a specific label
+    general_info_table = None
+    for table in soup.find_all('table'):
+        if table.find(text='Brønnbane navn'):
+            general_info_table = table
+            break
+
     if not general_info_table:
-        logging.warning(f"'general-info-table' not found for {wlbwellborename}")
+        logging.warning(f"'Brønnbane navn' not found in any table for {wlbwellborename}")
         return
     else:
-        logging.info(f"Found 'general-info-table' for {wlbwellborename}")
+        logging.info(f"Found the general info table for {wlbwellborename}")
 
     # Initialize a dictionary to hold the scraped data
     data = {
-        'wlbwellborename': wlbwellborename
+        'wlbwellborename': wlbwellborename.strip()
     }
 
     # Define a mapping from the HTML labels to database column names
@@ -101,7 +110,7 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
     # Function to parse date strings into YYYY-MM-DD format
     def parse_date(date_str):
         try:
-            return time.strftime('%Y-%m-%d', time.strptime(date_str, '%d.%m.%Y'))
+            return datetime.strptime(date_str, '%d.%m.%Y').strftime('%Y-%m-%d')
         except ValueError:
             logging.warning(f"Invalid date format '{date_str}' for {wlbwellborename}")
             return None
@@ -110,10 +119,15 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
     for row in general_info_table.find_all('tr'):
         cells = row.find_all('td')
         if len(cells) != 2:
+            logging.debug(f"Skipping row with {len(cells)} cells.")
             continue  # Skip rows that don't have exactly two cells
 
         label = cells[0].get_text(strip=True).rstrip(':')
-        value = cells[1].get_text(strip=True)
+        # Get the specific div containing the value, if possible
+        value_div = cells[1].find('div')
+        value = value_div.get_text(strip=True) if value_div else cells[1].get_text(strip=True)
+
+        logging.debug(f"Extracted label: '{label}', value: '{value}'")
 
         if label in label_to_column:
             column = label_to_column[label]
@@ -146,6 +160,9 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
         else:
             logging.debug(f"Unmapped label '{label}' encountered for {wlbwellborename}")
 
+    # Log the data to be upserted
+    logging.debug(f"Data to upsert for {wlbwellborename}: {data}")
+
     # Check if mandatory fields are present
     if 'wlbwellborename' not in data or not data['wlbwellborename']:
         logging.error(f"'wlbwellborename' missing or empty for {wlbwellborename}, skipping insertion.")
@@ -156,6 +173,9 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
         if key not in data:
             data[key] = None
 
+    # Log the final data
+    logging.debug(f"Final data for upsert: {data}")
+
     # Upsert the data into the 'general_info' table
     try:
         response = supabase.table('general_info') \
@@ -164,6 +184,6 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
         if response.status_code in [200, 201]:
             logging.info(f"Upserted general_info data for {wlbwellborename}")
         else:
-            logging.error(f"Failed to upsert general_info data for {wlbwellborename}: {response}")
+            logging.error(f"Failed to upsert general_info data for {wlbwellborename}: {response.status_code} - {response.error}")
     except Exception as e:
         logging.error(f"Exception during database operation for {wlbwellborename}: {e}")
