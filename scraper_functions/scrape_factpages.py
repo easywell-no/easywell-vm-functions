@@ -24,7 +24,7 @@ def scrape_factpages(supabase: Client):
             .eq('status', 'waiting')\
             .execute()
 
-        if response.error is None and response.data:
+        if response.data:
             wells_to_scrape = response.data
             logging.info(f"Found {len(wells_to_scrape)} wells needing rescrape.")
         else:
@@ -55,10 +55,10 @@ def scrape_factpages(supabase: Client):
                     .eq('wlbwellborename', wlbwellborename)\
                     .execute()
 
-                if non_exploration_update_response.error is None:
+                if non_exploration_update_response.status_code == 200:
                     logging.info(f"Marked well '{wlbwellborename}' as completed.")
                 else:
-                    logging.error(f"Failed to mark well '{wlbwellborename}' as completed. Error: {non_exploration_update_response.error}")
+                    logging.error(f"Failed to mark well '{wlbwellborename}' as completed. Status: {non_exploration_update_response.status_code}")
 
             except Exception as update_exception:
                 logging.error(f"Failed to update non-exploration well '{wlbwellborename}' to 'completed': {update_exception}", exc_info=True)
@@ -72,10 +72,10 @@ def scrape_factpages(supabase: Client):
                 .execute()
 
             # Check if the update was successful
-            if update_status_response.error is None:
+            if update_status_response.status_code == 200:
                 logging.info(f"Reserved wellbore '{wlbwellborename}' for scraping.")
             else:
-                logging.error(f"Failed to reserve wellbore '{wlbwellborename}'. Error: {update_status_response.error}")
+                logging.error(f"Failed to reserve wellbore '{wlbwellborename}'. Status: {update_status_response.status_code}")
                 continue  # Skip to the next well
 
             # Step 3: Perform scraping
@@ -95,10 +95,10 @@ def scrape_factpages(supabase: Client):
                         .eq('wlbwellborename', wlbwellborename)\
                         .execute()
 
-                    if error_update_response.error is None:
+                    if error_update_response.status_code == 200:
                         logging.info(f"Updated wellbore '{wlbwellborename}' status to 'error' due to scraping failure.")
                     else:
-                        logging.error(f"Failed to update status to 'error' for wellbore '{wlbwellborename}'. Error: {error_update_response.error}")
+                        logging.error(f"Failed to update status to 'error' for wellbore '{wlbwellborename}'. Status: {error_update_response.status_code}")
                 except Exception as update_exception:
                     logging.error(f"Failed to update status to 'error' for wellbore '{wlbwellborename}': {update_exception}", exc_info=True)
                 continue  # Move to the next well
@@ -110,10 +110,10 @@ def scrape_factpages(supabase: Client):
                     .eq('wlbwellborename', wlbwellborename)\
                     .execute()
 
-                if complete_update_response.error is None:
+                if complete_update_response.status_code == 200:
                     logging.info(f"Marked well '{wlbwellborename}' as completed.")
                 else:
-                    logging.error(f"Failed to mark well '{wlbwellborename}' as completed. Error: {complete_update_response.error}")
+                    logging.error(f"Failed to mark well '{wlbwellborename}' as completed. Status: {complete_update_response.status_code}")
 
             except Exception as update_exception:
                 logging.error(f"Failed to update wellbore '{wlbwellborename}' after scraping: {update_exception}", exc_info=True)
