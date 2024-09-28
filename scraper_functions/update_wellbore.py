@@ -1,22 +1,36 @@
+import os
+import logging
+from logging.handlers import RotatingFileHandler
+import sys
+from dotenv import load_dotenv
 import pandas as pd
 from datetime import datetime, timedelta
-import logging
 from io import StringIO
 import requests
 from supabase import create_client, Client
 
-# Configure logging
+# Load environment variables
+load_dotenv()
+
+# Configure logging with RotatingFileHandler
+log_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+log_file = "/absolute/path/to/logs/update_wellbore.log"  # Use absolute path
+
+rotating_handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=5)  # 5 MB per file
+rotating_handler.setFormatter(log_formatter)
+rotating_handler.setLevel(logging.INFO)
+
+stream_handler = logging.StreamHandler(sys.stdout)
+stream_handler.setFormatter(log_formatter)
+stream_handler.setLevel(logging.INFO)
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.FileHandler("update_wellbore.log"),
-        logging.StreamHandler()
-    ]
+    handlers=[rotating_handler, stream_handler]
 )
 
 # Constants
-IGNORED_COLUMNS = ['last_scraped', 'status', 'needs_rescrape', 'datesyncNPD']
+IGNORED_COLUMNS = ['last_scraped', 'status', 'needs_rescrape']
 SUPABASE_COLUMNS = [
     'wlbwellborename', 'wlbwelltype', 'wlbwell', 'wlbdrillingoperator',
     'wlbproductionlicence', 'wlbpurpose', 'wlbstatus', 'wlbcontent',
@@ -107,6 +121,9 @@ def fetch_all_supabase_data(supabase_client: Client, table_name: str):
             break
     return pd.DataFrame(all_data)
 
+def clean_dict(d):
+    return {k: (v if pd.notna(v) else None) for k, v in d.items()}
+
 def update_wellbore_data(supabase_client: Client):
     logging.info("Starting update_wellbore_data process.")
     
@@ -148,10 +165,6 @@ def update_wellbore_data(supabase_client: Client):
     # Replace NaN and NaT with None
     df = df.where(pd.notnull(df), None)
     logging.info("Replaced all invalid placeholder values with None.")
-    
-    # Function to clean a dictionary by replacing NaN with None
-    def clean_dict(d):
-        return {k: (v if pd.notna(v) else None) for k, v in d.items()}
     
     if df.isnull().values.any():
         logging.info("DataFrame contains null values. They will be inserted as null in Supabase.")

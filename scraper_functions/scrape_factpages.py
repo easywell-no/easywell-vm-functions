@@ -11,32 +11,87 @@ from factpage_scrape_wellbore_history import scrape_wellbore_history
 from factpage_scrape_lithostratigraphy import scrape_lithostratigraphy
 from factpage_scrape_casing_and_tests import scrape_casing_and_tests
 from factpage_scrape_drilling_fluid import scrape_drilling_fluid
+from factpage_scrape_general_info import scrape_general_info
 
 def scrape_factpages(supabase: Client):
-    # Get the list of exploration wells to scrape
-    response = supabase.table('wellbore_data').select('wlbwellborename', 'wlbfactpageurl').eq('wlbwelltype', 'EXPLORATION').execute()
+    logging.info("Starting scrape_factpages process.")
 
-    # Check if the response has data
-    if hasattr(response, 'data') and response.data:
-        wellbores = response.data
-        logging.info(f"Fetched {len(wellbores)} exploration wells to scrape.")
+    try:
+        # Step 1: Select wells that need rescraping and are in 'waiting' status
+        response = supabase.table('wellbore_data')\
+            .select('wlbwellborename, wlbfactpageurl')\
+            .eq('needs_rescrape', True)\
+            .eq('status', 'waiting')\
+            .execute()
 
-        for record in wellbores:
-            wlbwellborename = record['wlbwellborename']
-            factpage_url = record['wlbfactpageurl']
+        if hasattr(response, 'data') and response.data:
+            wells_to_scrape = response.data
+            logging.info(f"Found {len(wells_to_scrape)} wells needing rescrape.")
+        else:
+            logging.info("No wells require rescraping at this time.")
+            return
 
-            if not factpage_url:
-                logging.warning(f"No factpage URL for {wlbwellborename}")
-                continue
+    except Exception as e:
+        logging.error(f"Error querying wells for rescrape: {e}", exc_info=True)
+        return
 
-            logging.info(f"Scraping factpage for {wlbwellborename}")
+    for well in wells_to_scrape:
+        wlbwellborename = well.get('wlbwellborename')
+        factpage_url = well.get('wlbfactpageurl')
 
+        if not factpage_url:
+            logging.warning(f"No factpage URL for wellbore '{wlbwellborename}'. Skipping.")
+            # Optionally, you can update the status to 'error' here if needed
+            continue
+
+        logging.info(f"Processing wellbore '{wlbwellborename}'.")
+
+        try:
+            # Step 2: Reserve the well for scraping by updating its status to 'reserved'
+            update_status_response = supabase.table('wellbore_data')\
+                .update({'status': 'reserved'})\
+                .eq('wlbwellborename', wlbwellborename)\
+                .execute()
+
+            if update_status_response.error:
+                logging.error(f"Failed to reserve wellbore '{wlbwellborename}': {update_status_response.error}")
+                continue  # Skip to the next well
+
+            logging.info(f"Reserved wellbore '{wlbwellborename}' for scraping.")
+
+            # Step 3: Perform scraping
             try:
                 scrape_wellbore_history(supabase, wlbwellborename, factpage_url)
                 scrape_lithostratigraphy(supabase, wlbwellborename, factpage_url)
                 scrape_casing_and_tests(supabase, wlbwellborename, factpage_url)
                 scrape_drilling_fluid(supabase, wlbwellborename, factpage_url)
-            except Exception as e:
-                logging.error(f"An error occurred while scraping {wlbwellborename}: {e}")
-    else:
-        logging.error(f"Error fetching wellbore data or no data returned: {response}")
+                scrape_general_info(supabase, wlbwellborename, factpage_url)
+            except Exception as scrape_exception:
+                logging.error(f"Scraping failed for wellbore '{wlbwellborename}': {scrape_exception}", exc_info=True)
+                # Step 4a: On scraping failure, update status to 'error' and needs_rescrape to FALSE
+                try:
+                    supabase.table('wellbore_data')\
+                        .update({'status': 'error', 'needs_rescrape': False})\
+                        .eq('wlbwellborename', wlbwellborename)\
+                        .execute()
+                    logging.info(f"Updated wellbore '{wlbwellborename}' status to 'error' due to scraping failure.")
+                except Exception as update_exception:
+                    logging.error(f"Failed to update status to 'error' for wellbore '{wlbwellborename}': {update_exception}", exc_info=True)
+                continue  # Move to the next well
+
+            # Step 4b: On successful scraping, update needs_rescrape to FALSE and status to 'completed'
+            try:
+                supabase.table('wellbore_data')\
+                    .update({'needs_rescrape': False, 'status': 'completed'})\
+                    .eq('wlbwellborename', wlbwellborename)\
+                    .execute()
+                logging.info(f"Successfully scraped and updated wellbore '{wlbwellborename}'.")
+            except Exception as update_exception:
+                logging.error(f"Failed to update wellbore '{wlbwellborename}' after scraping: {update_exception}", exc_info=True)
+                # Optionally, you might want to set 'status' to 'error' here as well
+
+        except Exception as e:
+            logging.error(f"Unexpected error processing wellbore '{wlbwellborename}': {e}", exc_info=True)
+            # Optionally, update the status to 'error' here
+
+    logging.info("Completed scrape_factpages process.")
