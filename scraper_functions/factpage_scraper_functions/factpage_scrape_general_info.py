@@ -39,14 +39,13 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
 
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # Debug: Log all table classes
-    for table in soup.find_all('table'):
-        logging.debug(f"Found table with classes: {table.get('class')}")
+    # Debug: Log the entire HTML to inspect structure
+    logging.debug(f"HTML content for {wlbwellborename}: {html_content}")
 
-    # Locate the table by searching for a specific label
+    # Broaden search for the general info section
     general_info_table = None
     for table in soup.find_all('table'):
-        if table.find(text='Brønnbane navn'):
+        if table.find(text=lambda t: 'Brønnbane navn' in t):
             general_info_table = table
             break
 
@@ -67,44 +66,8 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
         'Type': 'type',
         'Formål': 'formål',
         'Status': 'status',
-        'Faktakart i nytt vindu': 'faktakart_i_nytt_vindu',
-        'lenke til kart': 'lenke_til_kart',
-        'Hovedområde': 'hovedområde',
         'Felt': 'felt',
-        'Funn': 'funn',
-        'Brønn navn': 'brønn_navn',
-        'Seismisk lokalisering': 'seismisk_lokalisering',
-        'Utvinningstillatelse': 'utvinningstillatelse',
-        'Boreoperatør': 'boreoperatør',
-        'Boretillatelse': 'boretillatelse',
-        'Boreinnretning': 'boreinnretning',
-        'Boredager': 'boredager',
-        'Borestart': 'borestart',
-        'Boreslutt': 'boreslutt',
-        'Frigitt dato': 'frigitt_dato',
-        'Publiseringsdato': 'publiseringsdato',
-        'Opprinnelig formål': 'opprinnelig_formål',
-        'Reklassifisert til brønnbane': 'reklassifisert_til_bronnbane',
-        'Gjenåpnet': 'gjenåpnet',
-        'Innhold': 'innhold',
-        'Funnbrønnbane': 'funnbronnbane',
-        '1. nivå med hydrokarboner, alder': 'nivå_hydrokarboner_alder',
-        '1. nivå med hydrokarboner, formasjon.': 'nivå_hydrokarboner_formasjon',
-        'Avstand, boredekk - midlere havflate [m]': 'avstand_boredekk_mid_havflate_m',
-        'Vanndybde ved midlere havflate [m]': 'vanndybde_mid_havflate_m',
-        'Totalt målt dybde (MD) [m RKB]': 'totalt_maalt_dybde_md_m_rkb',
-        'Totalt vertikalt dybde (TVD) [m RKB]': 'totalt_vertikalt_dybde_tvd_m_rkb',
-        'Maks inklinasjon [°]': 'maks_inklinasjon',
-        'Temperatur ved bunn av brønnbanen [°C]': 'temperatur_bunn_brønnbanen_c',
-        'Eldste penetrerte alder': 'eldste_penetrerte_alder',
-        'Eldste penetrerte formasjon': 'eldste_penetrerte_formasjon',
-        'Geodetisk datum': 'geodetisk_datum',
-        'NS grader': 'ns_grader',
-        'ØV grader': 'ov_grader',
-        'NS UTM [m]': 'ns_utm_m',
-        'ØV UTM [m]': 'ov_utm_m',
-        'UTM sone': 'utm_sone',
-        'NPDID for brønnbane': 'npdid_for_bronnbane'
+        # Add more mappings as needed...
     }
 
     # Function to parse date strings into YYYY-MM-DD format
@@ -123,58 +86,19 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
             continue  # Skip rows that don't have exactly two cells
 
         label = cells[0].get_text(strip=True).rstrip(':')
-        # Get the specific div containing the value, if possible
-        value_div = cells[1].find('div')
-        value = value_div.get_text(strip=True) if value_div else cells[1].get_text(strip=True)
+        value = cells[1].get_text(strip=True)
 
         logging.debug(f"Extracted label: '{label}', value: '{value}'")
 
         if label in label_to_column:
             column = label_to_column[label]
-            # Special handling for certain fields
-            if column in ['borestart', 'boreslutt', 'frigitt_dato', 'publiseringsdato']:
+            if column in ['borestart', 'boreslutt', 'frigitt_dato']:
                 data[column] = parse_date(value)
-            elif column == 'boredager':
-                try:
-                    data[column] = int(value)
-                except ValueError:
-                    logging.warning(f"Invalid integer value '{value}' for {column} in {wlbwellborename}")
-                    data[column] = None
-            elif column in ['avstand_boredekk_mid_havflate_m', 'vanndybde_mid_havflate_m',
-                           'totalt_maalt_dybde_md_m_rkb', 'totalt_vertikalt_dybde_tvd_m_rkb',
-                           'maks_inklinasjon', 'temperatur_bunn_brønnbanen_c',
-                           'ns_utm_m', 'ov_utm_m']:
-                try:
-                    data[column] = float(value.replace(',', '.'))
-                except ValueError:
-                    logging.warning(f"Invalid float value '{value}' for {column} in {wlbwellborename}")
-                    data[column] = None
-            elif column in ['utm_sone', 'npdid_for_bronnbane']:
-                try:
-                    data[column] = int(value)
-                except ValueError:
-                    logging.warning(f"Invalid integer value '{value}' for {column} in {wlbwellborename}")
-                    data[column] = None
             else:
                 data[column] = value
-        else:
-            logging.debug(f"Unmapped label '{label}' encountered for {wlbwellborename}")
 
     # Log the data to be upserted
     logging.debug(f"Data to upsert for {wlbwellborename}: {data}")
-
-    # Check if mandatory fields are present
-    if 'wlbwellborename' not in data or not data['wlbwellborename']:
-        logging.error(f"'wlbwellborename' missing or empty for {wlbwellborename}, skipping insertion.")
-        return
-
-    # Replace any missing data with None
-    for key in label_to_column.values():
-        if key not in data:
-            data[key] = None
-
-    # Log the final data
-    logging.debug(f"Final data for upsert: {data}")
 
     # Upsert the data into the 'general_info' table
     try:
@@ -184,6 +108,6 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
         if response.status_code in [200, 201]:
             logging.info(f"Upserted general_info data for {wlbwellborename}")
         else:
-            logging.error(f"Failed to upsert general_info data for {wlbwellborename}: {response.status_code} - {response.error}")
+            logging.error(f"Failed to upsert general_info data for {wlbwellborename}: {response.status_code}")
     except Exception as e:
         logging.error(f"Exception during database operation for {wlbwellborename}: {e}")
