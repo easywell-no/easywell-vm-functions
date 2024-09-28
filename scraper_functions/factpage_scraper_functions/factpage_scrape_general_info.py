@@ -6,6 +6,7 @@ from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestExce
 import time
 from datetime import datetime
 
+# Function to extract data from a single well page
 def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: str):
     max_retries = 3
     html_content = None
@@ -40,7 +41,7 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
     # Initialize the data dictionary
     data = {'wlbwellborename': wlbwellborename.strip()}
 
-    # Label to column mapping (keep this as is)
+    # Label to column mapping
     label_to_column = {
         'Brønnbane navn': 'bronnbane_navn',
         'Type': 'type',
@@ -88,52 +89,37 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
         except ValueError:
             return None
 
-    # Find the general info section
-    general_info_section = None
-    for li in soup.find_all('li'):
-        h2 = li.find('h2')
-        if h2 and h2.get_text(strip=True) in ['Generelt', 'General']:
-            general_info_section = li
-            break
+    # Function to extract values based on a specific keyword in the table row
+    def extract_value(soup, keyword):
+        rows = soup.find_all('tr')  # Find all table rows
+        for row in rows:
+            cells = row.find_all('td')
+            if cells and keyword in cells[0].get_text(strip=True):
+                return cells[1].get_text(strip=True) if len(cells) > 1 else None
+        return None
 
-    if not general_info_section:
-        logging.warning(f"General info section not found for {wlbwellborename}")
-        return
-    else:
-        logging.info(f"Found general info section for {wlbwellborename}")
-
-    # Find all rows in the general info section
-    rows = general_info_section.find_all('tr')
-
-    for row in rows:
-        cells = row.find_all('td')
-        if len(cells) != 2:
-            continue
-
-        label_cell, value_cell = cells
-        label_text = label_cell.get_text(separator=' ', strip=True).rstrip(':')
-        value_text = value_cell.get_text(separator=' ', strip=True)
-
-        if label_text in label_to_column:
-            column = label_to_column[label_text]
+    # Iterate through the label-to-column mappings and extract values
+    for label, column in label_to_column.items():
+        value = extract_value(soup, label)
+        if value:
             if column in ['borestart', 'boreslutt', 'frigitt_dato', 'publiseringsdato']:
-                data[column] = parse_date(value_text)
+                data[column] = parse_date(value)
             elif column in ['gjenapnet', 'funnbronnbane']:
-                data[column] = value_text.strip().upper() == "YES"
+                data[column] = value.strip().upper() == "YES"
             elif column in ['boredager', 'maks_inklinasjon_deg', 'utm_sone', 'npdid_bronnbanen']:
                 try:
-                    data[column] = int(value_text.replace(',', '').replace(' ', ''))
+                    data[column] = int(value.replace(',', '').replace(' ', ''))
                 except ValueError:
                     data[column] = None
             elif column in ['avstand_boredekk_m_m', 'vanndybde_m_m',
                            'totalt_maalt_dybde_md_m_rkb', 'totalt_vertikalt_dybde_tvd_m_rkb',
                            'temperatur_bunn_bronnbane_c', 'ns_utm_m', 'ov_utm_m']:
                 try:
-                    data[column] = float(value_text.replace(',', '.').replace(' ', ''))
+                    data[column] = float(value.replace(',', '.').replace(' ', ''))
                 except ValueError:
                     data[column] = None
             else:
-                data[column] = value_text
+                data[column] = value
 
     # Log the data before upserting
     logging.debug(f"Data to be upserted for {wlbwellborename}: {data}")
