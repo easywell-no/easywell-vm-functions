@@ -53,8 +53,13 @@ def scrape_factpages(supabase: Client):
                 .eq('wlbwellborename', wlbwellborename)\
                 .execute()
 
-            if update_status_response.error:
-                logging.error(f"Failed to reserve wellbore '{wlbwellborename}': {update_status_response.error}")
+            # Check if the update was successful by verifying the status_code
+            if hasattr(update_status_response, 'status_code'):
+                if update_status_response.status_code >= 400:
+                    logging.error(f"Failed to reserve wellbore '{wlbwellborename}'. Status Code: {update_status_response.status_code}, Response: {update_status_response}")
+                    continue  # Skip to the next well
+            else:
+                logging.warning(f"Could not determine status for reserving wellbore '{wlbwellborename}'. Response: {update_status_response}")
                 continue  # Skip to the next well
 
             logging.info(f"Reserved wellbore '{wlbwellborename}' for scraping.")
@@ -70,22 +75,32 @@ def scrape_factpages(supabase: Client):
                 logging.error(f"Scraping failed for wellbore '{wlbwellborename}': {scrape_exception}", exc_info=True)
                 # Step 4a: On scraping failure, update status to 'error' and needs_rescrape to FALSE
                 try:
-                    supabase.table('wellbore_data')\
+                    error_update_response = supabase.table('wellbore_data')\
                         .update({'status': 'error', 'needs_rescrape': False})\
                         .eq('wlbwellborename', wlbwellborename)\
                         .execute()
-                    logging.info(f"Updated wellbore '{wlbwellborename}' status to 'error' due to scraping failure.")
+
+                    # Verify if the error update was successful
+                    if hasattr(error_update_response, 'status_code') and error_update_response.status_code < 400:
+                        logging.info(f"Updated wellbore '{wlbwellborename}' status to 'error' due to scraping failure.")
+                    else:
+                        logging.error(f"Failed to update status to 'error' for wellbore '{wlbwellborename}'. Response: {error_update_response}")
                 except Exception as update_exception:
                     logging.error(f"Failed to update status to 'error' for wellbore '{wlbwellborename}': {update_exception}", exc_info=True)
                 continue  # Move to the next well
 
             # Step 4b: On successful scraping, update needs_rescrape to FALSE and status to 'completed'
             try:
-                supabase.table('wellbore_data')\
+                complete_update_response = supabase.table('wellbore_data')\
                     .update({'needs_rescrape': False, 'status': 'completed'})\
                     .eq('wlbwellborename', wlbwellborename)\
                     .execute()
-                logging.info(f"Successfully scraped and updated wellbore '{wlbwellborename}'.")
+
+                # Verify if the completion update was successful
+                if hasattr(complete_update_response, 'status_code') and complete_update_response.status_code < 400:
+                    logging.info(f"Successfully scraped and updated wellbore '{wlbwellborename}'.")
+                else:
+                    logging.error(f"Failed to update wellbore '{wlbwellborename}' after scraping. Response: {complete_update_response}")
             except Exception as update_exception:
                 logging.error(f"Failed to update wellbore '{wlbwellborename}' after scraping: {update_exception}", exc_info=True)
                 # Optionally, you might want to set 'status' to 'error' here as well

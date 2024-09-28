@@ -241,10 +241,10 @@ def update_wellbore_data(supabase_client: Client):
             chunks = [new_records[i:i + 1000] for i in range(0, total_new_records, 1000)]
             for chunk in chunks:
                 response = supabase_client.table('wellbore_data').insert(chunk).execute()
-                if hasattr(response, 'data'):
-                    logging.info(f"Inserted {len(chunk)} new records successfully.")
+                if response.error:
+                    logging.error(f"Error inserting new records: {response.error}")
                 else:
-                    logging.error(f"Error inserting new records: {response}")
+                    logging.info(f"Inserted {len(chunk)} new records successfully.")
         except Exception as e:
             logging.error(f"Exception occurred during insertion: {e}")
     
@@ -265,10 +265,10 @@ def update_wellbore_data(supabase_client: Client):
                     
                     response = supabase_client.table('wellbore_data').update(update_dict).eq('wlbwellborename', well_name).execute()
                     
-                    if hasattr(response, 'data'):
-                        logging.info(f"Updated record {well_name} successfully.")
+                    if response.error:
+                        logging.error(f"Error updating record {well_name}: {response.error}")
                     else:
-                        logging.error(f"Error updating record {well_name}: {response}")
+                        logging.info(f"Updated record {well_name} successfully.")
             
             logging.info(f"Updated {total_update_records} records successfully.")
         except Exception as e:
