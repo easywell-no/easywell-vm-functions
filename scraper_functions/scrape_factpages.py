@@ -109,10 +109,11 @@ def scrape_factpages(supabase: Client):
                     .eq('wlbwellborename', wlbwellborename)\
                     .execute()
 
-                if complete_update_response.status == 200:
-                    logging.info(f"Successfully scraped and updated wellbore '{wlbwellborename}'.")
+                if non_exploration_update_response.error is None:
+                    logging.info(f"Marked well '{wlbwellborename}' as completed.")
                 else:
-                    logging.error(f"Failed to update wellbore '{wlbwellborename}' after scraping. Status: {complete_update_response.status}")
+                    logging.error(f"Failed to mark well '{wlbwellborename}' as completed. Error: {non_exploration_update_response.error}")
+
             except Exception as update_exception:
                 logging.error(f"Failed to update wellbore '{wlbwellborename}' after scraping: {update_exception}", exc_info=True)
 
