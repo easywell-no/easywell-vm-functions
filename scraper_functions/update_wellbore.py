@@ -12,11 +12,15 @@ from supabase import create_client, Client
 # Load environment variables
 load_dotenv()
 
-# Configure logging with RotatingFileHandler
-log_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
-log_file = "/absolute/path/to/logs/update_wellbore.log"  # Use absolute path
+# Create log directory if it doesn't exist
+log_dir = "/root/easywell-vm-functions/logs"
+os.makedirs(log_dir, exist_ok=True)
 
-rotating_handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=5)  # 5 MB per file
+# Configure logging for update_wellbore.py
+log_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+log_file = os.path.join(log_dir, "update_wellbore.log")
+
+rotating_handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=5)
 rotating_handler.setFormatter(log_formatter)
 rotating_handler.setLevel(logging.INFO)
 

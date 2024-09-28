@@ -3,6 +3,7 @@ import logging
 import sys
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from logging.handlers import RotatingFileHandler
 from update_wellbore import update_wellbore_data
 from scrape_factpages import scrape_factpages
 from cleaner import cleanup
@@ -10,9 +11,13 @@ from cleaner import cleanup
 # Load environment variables
 load_dotenv()  # Ensure this is called early
 
-# Configure logging
+# Create log directory if it doesn't exist
+log_dir = "/root/easywell-vm-functions/logs"
+os.makedirs(log_dir, exist_ok=True)
+
+# Configure logging for main.py
 log_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
-log_file = "/absolute/path/to/logs/main.log"  # Use absolute path
+log_file = os.path.join(log_dir, "main.log")
 
 rotating_handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=5)
 rotating_handler.setFormatter(log_formatter)
