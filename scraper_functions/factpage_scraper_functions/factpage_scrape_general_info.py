@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from supabase import Client
 from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestException
 import time
+from datetime import datetime
 
 def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: str):
     max_retries = 3
@@ -20,21 +21,23 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
             response.encoding = response.apparent_encoding  # Correct encoding
             html_content = response.text
             break
-        except (HTTPError, ConnectionError, Timeout, RequestException):
+        except (HTTPError, ConnectionError, Timeout, RequestException) as e:
             if attempt < max_retries - 1:
                 time.sleep(2)  # Wait before retrying
             else:
-                return  # Exit if all retries fail
+                print(f"Failed to fetch page after {max_retries} attempts: {e}")
+                return
 
     if not html_content:
-        return  # Exit if no HTML content retrieved
+        print("No HTML content retrieved")
+        return
 
     soup = BeautifulSoup(html_content, 'html.parser')
 
     # Initialize the data dictionary
     data = {'wlbwellborename': wlbwellborename.strip()}
 
-    # Label to column mapping
+    # Label to column mapping (keep this as is)
     label_to_column = {
         'Brønnbane navn': 'bronnbane_navn',
         'Type': 'type',
@@ -82,43 +85,45 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
         except ValueError:
             return None
 
-    # Iterate over all tables and extract label-value pairs
-    for table in soup.find_all('table'):
-        for row in table.find_all('tr'):
-            cells = row.find_all('td')
-            if len(cells) != 2:
-                continue
+    # Find all rows in the general info section
+    rows = soup.find_all('tr', class_=lambda x: x and x.startswith('tooltip-boundary-'))
 
-            label_cell = cells[0]
-            label_text = label_cell.get_text(separator=' ', strip=True).rstrip(':')
-            value_cell = cells[1]
-            value_text = value_cell.get_text(separator=' ', strip=True)
+    for row in rows:
+        label_cell = row.find('td', class_=lambda x: x and x.endswith('cl'))
+        value_cell = row.find('td', class_=lambda x: x and x.endswith('c'))
 
-            if label_text in label_to_column:
-                column = label_to_column[label_text]
-                if column in ['borestart', 'boreslutt', 'frigitt_dato', 'publiseringsdato']:
-                    data[column] = parse_date(value_text)
-                elif column in ['gjenapnet', 'funnbronnbane']:
-                    data[column] = True if value_text.strip().upper() == "YES" else False
-                elif column in ['boredager', 'maks_inklinasjon_deg', 'utm_sone', 'npdid_bronnbanen']:
-                    try:
-                        data[column] = int(value_text)
-                    except ValueError:
-                        data[column] = None
-                elif column in ['avstand_boredekk_m_m', 'vanndybde_m_m',
-                               'totalt_maalt_dybde_md_m_rkb', 'totalt_vertikalt_dybde_tvd_m_rkb',
-                               'temperatur_bunn_bronnbane_c', 'ns_utm_m', 'ov_utm_m']:
-                    try:
-                        data[column] = float(value_text.replace(',', '.'))
-                    except ValueError:
-                        data[column] = None
-                else:
-                    data[column] = value_text
+        if not label_cell or not value_cell:
+            continue
+
+        label_text = label_cell.get_text(separator=' ', strip=True).rstrip(':')
+        value_text = value_cell.get_text(separator=' ', strip=True)
+
+        if label_text in label_to_column:
+            column = label_to_column[label_text]
+            if column in ['borestart', 'boreslutt', 'frigitt_dato', 'publiseringsdato']:
+                data[column] = parse_date(value_text)
+            elif column in ['gjenapnet', 'funnbronnbane']:
+                data[column] = True if value_text.strip().upper() == "YES" else False
+            elif column in ['boredager', 'maks_inklinasjon_deg', 'utm_sone', 'npdid_bronnbanen']:
+                try:
+                    data[column] = int(value_text)
+                except ValueError:
+                    data[column] = None
+            elif column in ['avstand_boredekk_m_m', 'vanndybde_m_m',
+                           'totalt_maalt_dybde_md_m_rkb', 'totalt_vertikalt_dybde_tvd_m_rkb',
+                           'temperatur_bunn_bronnbane_c', 'ns_utm_m', 'ov_utm_m']:
+                try:
+                    data[column] = float(value_text.replace(',', '.'))
+                except ValueError:
+                    data[column] = None
+            else:
+                data[column] = value_text
 
     # Upsert the data into the 'general_info' table
     try:
-        supabase.table('general_info') \
-            .upsert(data, on_conflict='wlbwellborename') \
-            .execute()
+        result = supabase.table('general_info').upsert(data, on_conflict='wlbwellborename').execute()
+        print(f"Upserted data for {wlbwellborename}")
     except Exception as e:
-        pass  # Handle errors as necessary
+        print(f"Error upserting data for {wlbwellborename}: {e}")
+
+    return data  # Return the scraped data for debugging purposes
