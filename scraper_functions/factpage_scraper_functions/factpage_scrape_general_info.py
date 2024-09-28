@@ -39,13 +39,13 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
 
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # Find the 'generell-informasjon' section
-    general_info_section = soup.find('li', id='generell-informasjon')
-    if not general_info_section:
-        logging.warning(f"'generell-informasjon' section not found for {wlbwellborename}")
+    # Find the 'Generell informasjon' table
+    general_info_table = soup.find('table', class_='general-info-table')
+    if not general_info_table:
+        logging.warning(f"'general-info-table' not found for {wlbwellborename}")
         return
     else:
-        logging.info(f"Found 'generell-informasjon' section for {wlbwellborename}")
+        logging.info(f"Found 'general-info-table' for {wlbwellborename}")
 
     # Initialize a dictionary to hold the scraped data
     data = {
@@ -106,55 +106,49 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
             logging.warning(f"Invalid date format '{date_str}' for {wlbwellborename}")
             return None
 
-    # Iterate over the content to extract label-value pairs
-    for element in general_info_section.find_all(['span', 'div'], recursive=False):
-        text = element.get_text(strip=True)
-        if not text:
-            continue
-        # Assume that labels and values are separated by line breaks or similar
-        # Split the text by line breaks or specific delimiters
-        # Example format: "Brønnbane navn \n1/3-9 S"
-        # Adjust the splitting logic based on actual HTML structure
-        parts = re.split(r'\n+', text)
-        if len(parts) >= 2:
-            label = parts[0].strip().rstrip(':')
-            value = parts[1].strip()
-            if label in label_to_column:
-                column = label_to_column[label]
-                # Special handling for certain fields
-                if column in ['borestart', 'boreslutt', 'frigitt_dato', 'publiseringsdato']:
-                    data[column] = parse_date(value)
-                elif column == 'boredager':
-                    try:
-                        data[column] = int(value)
-                    except ValueError:
-                        logging.warning(f"Invalid integer value '{value}' for {column} in {wlbwellborename}")
-                        data[column] = None
-                elif column in ['avstand_boredekk_mid_havflate_m', 'vanndybde_mid_havflate_m',
-                               'totalt_maalt_dybde_md_m_rkb', 'totalt_vertikalt_dybde_tvd_m_rkb',
-                               'maks_inklinasjon', 'temperatur_bunn_brønnbanen_c',
-                               'ns_utm_m', 'ov_utm_m']:
-                    try:
-                        data[column] = float(value.replace(',', '.'))
-                    except ValueError:
-                        logging.warning(f"Invalid float value '{value}' for {column} in {wlbwellborename}")
-                        data[column] = None
-                elif column in ['utm_sone', 'npdid_for_bronnbane']:
-                    try:
-                        data[column] = int(value)
-                    except ValueError:
-                        logging.warning(f"Invalid integer value '{value}' for {column} in {wlbwellborename}")
-                        data[column] = None
-                else:
-                    data[column] = value
+    # Iterate over the table rows to extract label-value pairs
+    for row in general_info_table.find_all('tr'):
+        cells = row.find_all('td')
+        if len(cells) != 2:
+            continue  # Skip rows that don't have exactly two cells
+
+        label = cells[0].get_text(strip=True).rstrip(':')
+        value = cells[1].get_text(strip=True)
+
+        if label in label_to_column:
+            column = label_to_column[label]
+            # Special handling for certain fields
+            if column in ['borestart', 'boreslutt', 'frigitt_dato', 'publiseringsdato']:
+                data[column] = parse_date(value)
+            elif column == 'boredager':
+                try:
+                    data[column] = int(value)
+                except ValueError:
+                    logging.warning(f"Invalid integer value '{value}' for {column} in {wlbwellborename}")
+                    data[column] = None
+            elif column in ['avstand_boredekk_mid_havflate_m', 'vanndybde_mid_havflate_m',
+                           'totalt_maalt_dybde_md_m_rkb', 'totalt_vertikalt_dybde_tvd_m_rkb',
+                           'maks_inklinasjon', 'temperatur_bunn_brønnbanen_c',
+                           'ns_utm_m', 'ov_utm_m']:
+                try:
+                    data[column] = float(value.replace(',', '.'))
+                except ValueError:
+                    logging.warning(f"Invalid float value '{value}' for {column} in {wlbwellborename}")
+                    data[column] = None
+            elif column in ['utm_sone', 'npdid_for_bronnbane']:
+                try:
+                    data[column] = int(value)
+                except ValueError:
+                    logging.warning(f"Invalid integer value '{value}' for {column} in {wlbwellborename}")
+                    data[column] = None
             else:
-                logging.debug(f"Unmapped label '{label}' encountered for {wlbwellborename}")
+                data[column] = value
         else:
-            logging.debug(f"Unexpected text format '{text}' in 'generell-informasjon' for {wlbwellborename}")
+            logging.debug(f"Unmapped label '{label}' encountered for {wlbwellborename}")
 
     # Check if mandatory fields are present
-    if 'wlbwellborename' not in data:
-        logging.error(f"'wlbwellborename' missing for {wlbwellborename}, skipping insertion.")
+    if 'wlbwellborename' not in data or not data['wlbwellborename']:
+        logging.error(f"'wlbwellborename' missing or empty for {wlbwellborename}, skipping insertion.")
         return
 
     # Replace any missing data with None
