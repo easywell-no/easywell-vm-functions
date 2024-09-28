@@ -17,35 +17,50 @@ def scrape_factpages(supabase: Client):
     logging.info("Starting scrape_factpages process.")
 
     try:
-        # Select only exploration wells that need rescraping and are in 'waiting' status
+        # Select wells that need rescraping and are in 'waiting' status
         response = supabase.table('wellbore_data')\
-            .select('wlbwellborename, wlbfactpageurl')\
+            .select('wlbwellborename, wlbfactpageurl, wlbwelltype')\
             .eq('needs_rescrape', True)\
             .eq('status', 'waiting')\
-            .eq('wlbwelltype', 'EXPLORATION')\
             .execute()
 
         wells_to_scrape = response.data
         if not wells_to_scrape:
-            logging.info("No exploration wells require rescraping at this time.")
+            logging.info("No wells require rescraping at this time.")
             return
 
-        logging.info(f"Found {len(wells_to_scrape)} exploration wells to scrape.")
+        logging.info(f"Found {len(wells_to_scrape)} wells to scrape.")
     except Exception as e:
-        logging.error(f"Error querying exploration wells: {e}", exc_info=True)
+        logging.error(f"Error querying wells: {e}", exc_info=True)
         return
 
     for well in wells_to_scrape:
         wlbwellborename = well.get('wlbwellborename')
         factpage_url = well.get('wlbfactpageurl')
+        well_type = well.get('wlbwelltype')
 
         if not factpage_url:
             logging.warning(f"No factpage URL for wellbore '{wlbwellborename}'. Skipping.")
             continue
 
-        logging.info(f"Scraping wellbore '{wlbwellborename}'.")
+        # If the well is not of type 'EXPLORATION', mark as completed immediately
+        if well_type != 'EXPLORATION':
+            supabase.table('wellbore_data')\
+                .update({'status': 'completed', 'needs_rescrape': False})\
+                .eq('wlbwellborename', wlbwellborename)\
+                .execute()
+            logging.info(f"Non-exploration well '{wlbwellborename}' marked as completed and skipped.")
+            continue
+
+        logging.info(f"Reserving wellbore '{wlbwellborename}' for scraping.")
 
         try:
+            # Set the status to 'reserved' before starting scraping
+            supabase.table('wellbore_data')\
+                .update({'status': 'reserved'})\
+                .eq('wlbwellborename', wlbwellborename)\
+                .execute()
+
             # Perform scraping for the well
             scrape_wellbore_history(supabase, wlbwellborename, factpage_url)
             scrape_lithostratigraphy(supabase, wlbwellborename, factpage_url)
@@ -53,7 +68,7 @@ def scrape_factpages(supabase: Client):
             scrape_drilling_fluid(supabase, wlbwellborename, factpage_url)
             scrape_general_info(supabase, wlbwellborename, factpage_url)
 
-            # Mark as completed after scraping
+            # Mark as completed after successful scraping
             supabase.table('wellbore_data')\
                 .update({'status': 'completed', 'needs_rescrape': False})\
                 .eq('wlbwellborename', wlbwellborename)\
