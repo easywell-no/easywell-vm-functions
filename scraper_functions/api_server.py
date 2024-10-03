@@ -92,9 +92,9 @@ async def scrape_and_store():
         raise HTTPException(status_code=400, detail="Scraping and storing is already running.")
     
     try:
-        # Start the scraping script
+        # Start the scraping script using nohup to run it in the background
         process = subprocess.Popen(
-            ["python", "scrape_and_store.py"],
+            ["nohup", "python", "scrape_and_store.py", "&"],
             cwd=os.path.dirname(os.path.abspath(__file__)),
             env=os.environ.copy(),
             stdout=subprocess.PIPE,
@@ -102,15 +102,12 @@ async def scrape_and_store():
         )
         # Update the process status
         process_status["scrape_and_store"] = {"running": True, "pid": process.pid}
-        # Start monitoring the process
-        monitor_thread = threading.Thread(target=monitor_process, args=("scrape_and_store", process.pid))
-        monitor_thread.start()
-        # Handle subprocess output asynchronously
-        asyncio.create_task(read_subprocess_output(process, "scrape_and_store"))
-        return {"message": "Scraping and storing started.", "pid": process.pid}
+        
+        return {"message": "Scraping and storing started in the background.", "pid": process.pid}
     except Exception as e:
         logging.error(f"Failed to start scrape_and_store: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/script_status/")
 async def script_status(status_request: ScriptStatus):
