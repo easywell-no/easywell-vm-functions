@@ -4,20 +4,20 @@ import sys
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from logging.handlers import RotatingFileHandler
-from update_wellbore import update_wellbore_data
-from scrape_factpages import scrape_factpages
+from all_scrape_and_store_functions.update_wellbore import update_wellbore_data
+from all_scrape_and_store_functions.scrape_factpages import scrape_factpages
 from cleaner import cleanup
 
 # Load environment variables
-load_dotenv()  # Ensure this is called early
+load_dotenv()
 
 # Create log directory if it doesn't exist
-log_dir = "/root/easywell-vm-functions/logs"
+log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 os.makedirs(log_dir, exist_ok=True)
 
-# Configure logging for main.py
+# Configure logging for scrape_and_store.py
 log_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
-log_file = os.path.join(log_dir, "main.log")
+log_file = os.path.join(log_dir, "scrape_and_store.log")
 
 rotating_handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=5)
 rotating_handler.setFormatter(log_formatter)
@@ -31,9 +31,6 @@ logging.basicConfig(
     level=logging.INFO,
     handlers=[rotating_handler, stream_handler]
 )
-
-# Append parent directory to sys.path if needed
-sys.path.append("..")  # Adjust as necessary
 
 # Load Supabase credentials from environment variables
 SUPABASE_URL = os.getenv('SUPABASE_URL')

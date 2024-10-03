@@ -1,5 +1,3 @@
-# cleaner.py
-
 import os
 import psutil
 import subprocess

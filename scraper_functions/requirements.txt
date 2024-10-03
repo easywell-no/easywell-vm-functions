@@ -1,5 +1,8 @@
+fastapi
+pydantic
+uvicorn
+python-dotenv
 supabase
 pandas
-python-dotenv
 requests
-beautifulsoup4
+psutil

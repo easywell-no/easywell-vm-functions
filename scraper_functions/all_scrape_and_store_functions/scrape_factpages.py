@@ -1,17 +1,11 @@
 import logging
 from supabase import Client
-import sys
 import os
-
-# Add path to factpage_scraper_functions
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(current_dir, 'factpage_scraper_functions'))
-
-from factpage_scrape_wellbore_history import scrape_wellbore_history
-from factpage_scrape_lithostratigraphy import scrape_lithostratigraphy
-from factpage_scrape_casing_and_tests import scrape_casing_and_tests
-from factpage_scrape_drilling_fluid import scrape_drilling_fluid
-from factpage_scrape_general_info import scrape_general_info
+from all_scrape_and_store_functions.factpage_scraper_functions.factpage_scrape_wellbore_history import scrape_wellbore_history
+from all_scrape_and_store_functions.factpage_scraper_functions.factpage_scrape_lithostratigraphy import scrape_lithostratigraphy
+from all_scrape_and_store_functions.factpage_scraper_functions.factpage_scrape_casing_and_tests import scrape_casing_and_tests
+from all_scrape_and_store_functions.factpage_scraper_functions.factpage_scrape_drilling_fluid import scrape_drilling_fluid
+from all_scrape_and_store_functions.factpage_scraper_functions.factpage_scrape_general_info import scrape_general_info
 
 def scrape_factpages(supabase: Client):
     logging.info("Starting scrape_factpages process.")
@@ -75,7 +69,6 @@ def scrape_factpages(supabase: Client):
                 .execute()
 
             logging.info(f"Successfully scraped and updated well '{wlbwellborename}'.")
-
         except Exception as scrape_exception:
             logging.error(f"Failed to scrape wellbore '{wlbwellborename}': {scrape_exception}", exc_info=True)
             # Mark as error if scraping fails

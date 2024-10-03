@@ -13,7 +13,9 @@ from supabase import create_client, Client
 load_dotenv()
 
 # Create log directory if it doesn't exist
-log_dir = "/root/easywell-vm-functions/logs"
+# Adjusted to use a relative path based on the script's location
+log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../logs")
+log_dir = os.path.abspath(log_dir)
 os.makedirs(log_dir, exist_ok=True)
 
 # Configure logging for update_wellbore.py
