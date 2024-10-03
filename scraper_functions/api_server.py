@@ -50,7 +50,7 @@ class ScriptStatus(BaseModel):
 
 async def read_subprocess_output(process, script_name):
     try:
-        stdout, stderr = process.communicate(timeout=30)  # Adjust timeout as needed
+        stdout, stderr = process.communicate(timeout=300)  # Adjust timeout as needed
         if stdout:
             logging.info(f"Output from {script_name}: {stdout.decode().strip()}")
         if stderr:
