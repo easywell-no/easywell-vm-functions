@@ -43,6 +43,9 @@ process_status = {
     "scrape_and_store": {"running": False, "pid": None}
 }
 
+# Create a lock for thread safety
+process_status_lock = threading.Lock()
+
 class ReportRequest(BaseModel):
     target_location: str
 
@@ -51,32 +54,31 @@ class ScriptStatus(BaseModel):
 
 async def read_subprocess_output(process, script_name):
     try:
-        stdout, stderr = process.communicate(timeout=300)  # Adjust timeout as needed
+        stdout, stderr = process.communicate()
         if stdout:
             logging.info(f"Output from {script_name}: {stdout.decode().strip()}")
         if stderr:
             logging.error(f"Error from {script_name}: {stderr.decode().strip()}")
-    except subprocess.TimeoutExpired:
-        process.kill()
-        logging.error(f"{script_name} subprocess timed out and was killed.")
+    except Exception as e:
+        logging.error(f"Error monitoring {script_name}: {e}")
 
 @app.post("/generate_report/")
 async def generate_report(request: ReportRequest):
     target = request.target_location
-    if process_status["generate_report"]["running"]:
-        raise HTTPException(status_code=400, detail="Generate report is already running.")
-    
+    with process_status_lock:
+        if process_status["generate_report"]["running"]:
+            raise HTTPException(status_code=400, detail="Generate report is already running.")
     try:
         # Start the report generation script
         process = subprocess.Popen(
-            ["python", "generate_report.py", target],
+            [sys.executable, "generate_report.py", target],
             cwd=os.path.dirname(os.path.abspath(__file__)),
             env=os.environ.copy(),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
-        # Update the process status
-        process_status["generate_report"] = {"running": True, "pid": process.pid}
+        with process_status_lock:
+            process_status["generate_report"] = {"running": True, "pid": process.pid}
         # Start monitoring the process
         monitor_thread = threading.Thread(target=monitor_process, args=("generate_report", process.pid))
         monitor_thread.start()
@@ -89,43 +91,46 @@ async def generate_report(request: ReportRequest):
 
 @app.post("/scrape_and_store/")
 async def scrape_and_store():
-    if process_status["scrape_and_store"]["running"]:
-        raise HTTPException(status_code=400, detail="Scraping and storing is already running.")
-    
+    with process_status_lock:
+        if process_status["scrape_and_store"]["running"]:
+            raise HTTPException(status_code=400, detail="Scraping and storing is already running.")
     try:
-        # Start the scraping script using nohup to run it in the background
+        # Start the scraping script
         process = subprocess.Popen(
-            ["nohup", "python", "scrape_and_store.py", "&"],
+            [sys.executable, "scrape_and_store.py"],
             cwd=os.path.dirname(os.path.abspath(__file__)),
             env=os.environ.copy(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True
         )
-        # Update the process status
-        process_status["scrape_and_store"] = {"running": True, "pid": process.pid}
-        
-        return {"message": "Scraping and storing started in the background.", "pid": process.pid}
+        with process_status_lock:
+            process_status["scrape_and_store"] = {"running": True, "pid": process.pid}
+        # Start monitoring the process
+        monitor_thread = threading.Thread(target=monitor_process, args=("scrape_and_store", process.pid))
+        monitor_thread.start()
+        return {"message": "Scraping and storing started.", "pid": process.pid}
     except Exception as e:
         logging.error(f"Failed to start scrape_and_store: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post("/script_status/")
 async def script_status(status_request: ScriptStatus):
     script_name = status_request.script_name
-    if script_name not in process_status:
-        raise HTTPException(status_code=400, detail=f"No script named {script_name}.")
-    
-    status = process_status[script_name]
+    with process_status_lock:
+        if script_name not in process_status:
+            raise HTTPException(status_code=400, detail=f"No script named {script_name}.")
+        status = process_status[script_name]
     return {"running": status["running"], "pid": status["pid"]}
 
 @app.post("/stop_script/")
 async def stop_script(status_request: ScriptStatus):
     script_name = status_request.script_name
-    if script_name not in process_status:
-        raise HTTPException(status_code=400, detail=f"No script named {script_name}.")
-    
-    status = process_status[script_name]
+    with process_status_lock:
+        if script_name not in process_status:
+            raise HTTPException(status_code=400, detail=f"No script named {script_name}.")
+        status = process_status[script_name]
     if status["running"] and status["pid"]:
         try:
             process = psutil.Process(status["pid"])
@@ -136,10 +141,12 @@ async def stop_script(status_request: ScriptStatus):
             except psutil.TimeoutExpired:
                 process.kill()  # Force kill
                 logging.warning(f"Process {script_name} killed forcefully.")
-            process_status[script_name] = {"running": False, "pid": None}
+            with process_status_lock:
+                process_status[script_name] = {"running": False, "pid": None}
             return {"message": f"Process {script_name} stopped."}
         except psutil.NoSuchProcess:
-            process_status[script_name] = {"running": False, "pid": None}
+            with process_status_lock:
+                process_status[script_name] = {"running": False, "pid": None}
             return {"message": f"Process {script_name} does not exist."}
         except Exception as e:
             logging.error(f"Failed to stop {script_name}: {e}")
@@ -152,14 +159,14 @@ def monitor_process(script_name, pid):
     try:
         proc = psutil.Process(pid)
         proc.wait()  # Wait until the process completes
-        process_status[script_name] = {"running": False, "pid": None}
-        logging.info(f"Process {script_name} with PID {pid} has completed.")
     except psutil.NoSuchProcess:
-        process_status[script_name] = {"running": False, "pid": None}
         logging.warning(f"Process {script_name} with PID {pid} does not exist.")
     except Exception as e:
-        process_status[script_name] = {"running": False, "pid": None}
         logging.error(f"Failed to monitor process {pid} for {script_name}: {e}")
+    finally:
+        with process_status_lock:
+            process_status[script_name] = {"running": False, "pid": None}
+        logging.info(f"Process {script_name} with PID {pid} has completed.")
 
 @app.get("/database_status/")
 async def database_status():
