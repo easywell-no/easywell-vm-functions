@@ -14,14 +14,7 @@ def setup_logging():
     )
 
 def load_env_variables():
-    load_env_variables_called = False
-    try:
-        load_dotenv()
-        load_env_variables_called = True
-    except Exception as e:
-        logging.error(f"Failed to load environment variables: {e}")
-    if not load_env_variables_called:
-        logging.warning("Environment variables might not be loaded properly.")
+    load_dotenv()
 
 def get_supabase_client() -> Client:
     SUPABASE_URL = os.getenv('SUPABASE_URL')
@@ -46,12 +39,20 @@ def query_wellbore_data(supabase: Client):
 
     # Number of EXPLORATION, DEVELOPMENT, OTHER, and total number of wells
     try:
-        response = supabase.table("wellbore_data").select("wlbwelltype").execute()
-        records = response.data
         type_counts = {}
-        for record in records:
-            well_type = record.get('wlbwelltype') or 'UNKNOWN'
-            type_counts[well_type] = type_counts.get(well_type, 0) + 1
+        page_size = 1000
+        start = 0
+        while True:
+            response = supabase.table("wellbore_data").select("wlbwelltype").range(start, start + page_size - 1).execute()
+            records = response.data
+            if not records:
+                break
+            for record in records:
+                well_type = record.get('wlbwelltype') or 'UNKNOWN'
+                type_counts[well_type] = type_counts.get(well_type, 0) + 1
+            if len(records) < page_size:
+                break
+            start += page_size
         data['wellbore_data']['type_counts'] = type_counts
         data['wellbore_data']['total_wells'] = sum(type_counts.values())
     except Exception as e:
@@ -60,17 +61,25 @@ def query_wellbore_data(supabase: Client):
 
     # Number of TRUE and FALSE in needs_rescrape
     try:
-        response = supabase.table("wellbore_data").select("needs_rescrape").execute()
-        records = response.data
         needs_rescrape_counts = {"True": 0, "False": 0, "NULL": 0}
-        for record in records:
-            value = record.get('needs_rescrape')
-            if value is True:
-                needs_rescrape_counts["True"] += 1
-            elif value is False:
-                needs_rescrape_counts["False"] += 1
-            else:
-                needs_rescrape_counts["NULL"] += 1
+        page_size = 1000
+        start = 0
+        while True:
+            response = supabase.table("wellbore_data").select("needs_rescrape").range(start, start + page_size - 1).execute()
+            records = response.data
+            if not records:
+                break
+            for record in records:
+                value = record.get('needs_rescrape')
+                if value is True:
+                    needs_rescrape_counts["True"] += 1
+                elif value is False:
+                    needs_rescrape_counts["False"] += 1
+                else:
+                    needs_rescrape_counts["NULL"] += 1
+            if len(records) < page_size:
+                break
+            start += page_size
         data['wellbore_data']['needs_rescrape'] = needs_rescrape_counts
     except Exception as e:
         logging.error(f"Error fetching needs_rescrape counts from wellbore_data: {e}")
@@ -78,12 +87,20 @@ def query_wellbore_data(supabase: Client):
 
     # Number of waiting, reserved, completed in status
     try:
-        response = supabase.table("wellbore_data").select("status").execute()
-        records = response.data
         status_counts = {}
-        for record in records:
-            status = record.get('status') or 'UNKNOWN'
-            status_counts[status] = status_counts.get(status, 0) + 1
+        page_size = 1000
+        start = 0
+        while True:
+            response = supabase.table("wellbore_data").select("status").range(start, start + page_size - 1).execute()
+            records = response.data
+            if not records:
+                break
+            for record in records:
+                status = record.get('status') or 'UNKNOWN'
+                status_counts[status] = status_counts.get(status, 0) + 1
+            if len(records) < page_size:
+                break
+            start += page_size
         data['wellbore_data']['status_counts'] = status_counts
     except Exception as e:
         logging.error(f"Error fetching status counts from wellbore_data: {e}")
@@ -94,13 +111,21 @@ def query_wellbore_data(supabase: Client):
 def query_wellbore_history(supabase: Client):
     data = {}
     try:
-        response = supabase.table("wellbore_history").select("wlbwellborename").execute()
-        records = response.data
         unique_wells = set()
-        for record in records:
-            name = record.get('wlbwellborename')
-            if name:
-                unique_wells.add(name)
+        page_size = 1000
+        start = 0
+        while True:
+            response = supabase.table("wellbore_history").select("wlbwellborename").range(start, start + page_size - 1).execute()
+            records = response.data
+            if not records:
+                break
+            for record in records:
+                name = record.get('wlbwellborename')
+                if name:
+                    unique_wells.add(name)
+            if len(records) < page_size:
+                break
+            start += page_size
         data['wellbore_history'] = {'unique_wells': len(unique_wells)}
     except Exception as e:
         logging.error(f"Error fetching unique wells from wellbore_history: {e}")
