@@ -34,12 +34,12 @@ def query_wellbore_data(supabase: Client):
 
     # Number of EXPLORATION, DEVELOPMENT, OTHER, and total number of wells
     try:
-        response = supabase.table("wellbore_data").select("type").execute()
+        response = supabase.table("wellbore_data").select("wlbwelltype").execute()
         if response.error:
             raise Exception(response.error.message)
         type_counts = {}
         for record in response.data:
-            well_type = record.get('type') or 'UNKNOWN'
+            well_type = record.get('wlbwelltype') or 'UNKNOWN'
             type_counts[well_type] = type_counts.get(well_type, 0) + 1
         data['wellbore_data'] = {}
         data['wellbore_data']['type_counts'] = type_counts
@@ -49,7 +49,7 @@ def query_wellbore_data(supabase: Client):
 
     # Total number of wells
     try:
-        response = supabase.table("wellbore_data").select("id", count='exact').execute()
+        response = supabase.table("wellbore_data").select("wlbwellborename", count='exact').execute()
         if response.error:
             raise Exception(response.error.message)
         total_wells = response.count
@@ -128,8 +128,6 @@ def main():
     except Exception as e:
         logging.error(f"Error querying the database: {e}")
         print(json.dumps({"error": str(e)}))
-    finally:
-        supabase.close()
 
 if __name__ == "__main__":
     main()
