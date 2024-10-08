@@ -47,7 +47,8 @@ process_status = {
 process_status_lock = threading.Lock()
 
 class ReportRequest(BaseModel):
-    target_location: str
+    latitude: float
+    longitude: float
 
 class ScriptStatus(BaseModel):
     script_name: str
@@ -64,14 +65,15 @@ async def read_subprocess_output(process, script_name):
 
 @app.post("/generate_report/")
 async def generate_report(request: ReportRequest):
-    target = request.target_location
+    latitude = request.latitude
+    longitude = request.longitude
     with process_status_lock:
         if process_status["generate_report"]["running"]:
             raise HTTPException(status_code=400, detail="Generate report is already running.")
     try:
-        # Start the report generation script
+        # Start the report generation script with latitude and longitude as arguments
         process = subprocess.Popen(
-            [sys.executable, "generate_report.py", target],
+            [sys.executable, "generate_report.py", str(latitude), str(longitude)],
             cwd=os.path.dirname(os.path.abspath(__file__)),
             env=os.environ.copy(),
             stdout=subprocess.PIPE,
@@ -84,7 +86,7 @@ async def generate_report(request: ReportRequest):
         monitor_thread.start()
         # Handle subprocess output asynchronously
         asyncio.create_task(read_subprocess_output(process, "generate_report"))
-        return {"message": f"Report generation started for {target}.", "pid": process.pid}
+        return {"message": f"Report generation started for coordinates ({latitude}, {longitude}).", "pid": process.pid}
     except Exception as e:
         logging.error(f"Failed to start generate_report: {e}")
         raise HTTPException(status_code=500, detail=str(e))
