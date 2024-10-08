@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from typing import Optional
 import psutil  # For better process management
 import asyncio
+import json
 
 # Load environment variables
 load_dotenv()
@@ -159,3 +160,49 @@ def monitor_process(script_name, pid):
     except Exception as e:
         process_status[script_name] = {"running": False, "pid": None}
         logging.error(f"Failed to monitor process {pid} for {script_name}: {e}")
+
+@app.get("/database_status/")
+async def database_status():
+    """
+    Endpoint to check the status of the databases.
+    Runs the check_database_content.py script and returns its JSON output.
+    """
+    script_name = "check_database_content.py"
+    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), script_name)
+
+    if not os.path.exists(script_path):
+        logging.error(f"{script_name} does not exist.")
+        raise HTTPException(status_code=500, detail=f"{script_name} does not exist.")
+
+    try:
+        # Run the script and capture its output
+        process = subprocess.Popen(
+            [sys.executable, script_path],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            env=os.environ.copy(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+        stdout, stderr = process.communicate(timeout=300)  # Adjust timeout as needed
+
+        if process.returncode != 0:
+            logging.error(f"{script_name} failed with error: {stderr.decode().strip()}")
+            raise HTTPException(status_code=500, detail=f"{script_name} failed: {stderr.decode().strip()}")
+
+        output = stdout.decode().strip()
+        try:
+            data = json.loads(output)
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to parse JSON output from {script_name}: {e}")
+            raise HTTPException(status_code=500, detail=f"Invalid JSON output from {script_name}")
+
+        return data
+
+    except subprocess.TimeoutExpired:
+        process.kill()
+        logging.error(f"{script_name} subprocess timed out and was killed.")
+        raise HTTPException(status_code=500, detail=f"{script_name} subprocess timed out and was killed.")
+    except Exception as e:
+        logging.error(f"Failed to run {script_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
