@@ -2,7 +2,6 @@
 
 import logging
 import os
-import sys  # Import sys to access command-line arguments
 
 # Importing modules from all_generate_report_functions
 from all_generate_report_functions import (
@@ -43,19 +42,7 @@ def main():
         return
 
     # Stage 1: Receive Input Coordinates
-    if len(sys.argv) >= 3:
-        try:
-            input_lat = float(sys.argv[1])
-            input_lon = float(sys.argv[2])
-            logging.info(f"Received coordinates from command line: ({input_lat}, {input_lon})")
-        except ValueError:
-            logging.error("Invalid latitude and longitude values provided.")
-            return
-    else:
-        logging.error("Latitude and longitude not provided as command-line arguments.")
-        return
-
-    user_input = input_handler.get_user_input(input_lat, input_lon)
+    user_input = input_handler.get_user_input()
     if user_input is None:
         logging.error("No valid input received. Exiting.")
         return
