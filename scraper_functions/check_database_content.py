@@ -31,40 +31,26 @@ def get_supabase_client() -> Client:
 
 def query_wellbore_data(supabase: Client):
     data = {}
+    data['wellbore_data'] = {}
 
     # Number of EXPLORATION, DEVELOPMENT, OTHER, and total number of wells
     try:
-        response = supabase.table("wellbore_data").select("wlbwelltype").execute()
-        if response.error:
-            raise Exception(response.error)
+        records = supabase.table("wellbore_data").select("wlbwelltype").execute()
         type_counts = {}
-        for record in response.data:
+        for record in records:
             well_type = record.get('wlbwelltype') or 'UNKNOWN'
             type_counts[well_type] = type_counts.get(well_type, 0) + 1
-        data['wellbore_data'] = {}
         data['wellbore_data']['type_counts'] = type_counts
+        data['wellbore_data']['total_wells'] = sum(type_counts.values())
     except Exception as e:
         logging.error(f"Error fetching type counts from wellbore_data: {e}")
         raise
 
-    # Total number of wells
-    try:
-        response = supabase.table("wellbore_data").select("wlbwellborename", count='exact').execute()
-        if response.error:
-            raise Exception(response.error)
-        total_wells = response.count
-        data['wellbore_data']['total_wells'] = total_wells
-    except Exception as e:
-        logging.error(f"Error fetching total wells from wellbore_data: {e}")
-        raise
-
     # Number of TRUE and FALSE in needs_rescrape
     try:
-        response = supabase.table("wellbore_data").select("needs_rescrape").execute()
-        if response.error:
-            raise Exception(response.error)
+        records = supabase.table("wellbore_data").select("needs_rescrape").execute()
         needs_rescrape_counts = {"True": 0, "False": 0, "NULL": 0}
-        for record in response.data:
+        for record in records:
             value = record.get('needs_rescrape')
             if value is True:
                 needs_rescrape_counts["True"] += 1
@@ -79,11 +65,9 @@ def query_wellbore_data(supabase: Client):
 
     # Number of waiting, reserved, completed in status
     try:
-        response = supabase.table("wellbore_data").select("status").execute()
-        if response.error:
-            raise Exception(response.error)
+        records = supabase.table("wellbore_data").select("status").execute()
         status_counts = {}
-        for record in response.data:
+        for record in records:
             status = record.get('status') or 'UNKNOWN'
             status_counts[status] = status_counts.get(status, 0) + 1
         data['wellbore_data']['status_counts'] = status_counts
@@ -96,11 +80,9 @@ def query_wellbore_data(supabase: Client):
 def query_wellbore_history(supabase: Client):
     data = {}
     try:
-        response = supabase.table("wellbore_history").select("wlbwellborename").execute()
-        if response.error:
-            raise Exception(response.error)
+        records = supabase.table("wellbore_history").select("wlbwellborename").execute()
         unique_wells = set()
-        for record in response.data:
+        for record in records:
             name = record.get('wlbwellborename')
             if name:
                 unique_wells.add(name)
