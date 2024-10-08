@@ -35,7 +35,10 @@ def query_wellbore_data(supabase: Client):
 
     # Number of EXPLORATION, DEVELOPMENT, OTHER, and total number of wells
     try:
-        records = supabase.table("wellbore_data").select("wlbwelltype").execute()
+        response = supabase.table("wellbore_data").select("wlbwelltype").execute()
+        if response.error:
+            raise Exception(response.error.message)
+        records = response.data
         type_counts = {}
         for record in records:
             well_type = record.get('wlbwelltype') or 'UNKNOWN'
@@ -48,7 +51,10 @@ def query_wellbore_data(supabase: Client):
 
     # Number of TRUE and FALSE in needs_rescrape
     try:
-        records = supabase.table("wellbore_data").select("needs_rescrape").execute()
+        response = supabase.table("wellbore_data").select("needs_rescrape").execute()
+        if response.error:
+            raise Exception(response.error.message)
+        records = response.data
         needs_rescrape_counts = {"True": 0, "False": 0, "NULL": 0}
         for record in records:
             value = record.get('needs_rescrape')
@@ -65,7 +71,10 @@ def query_wellbore_data(supabase: Client):
 
     # Number of waiting, reserved, completed in status
     try:
-        records = supabase.table("wellbore_data").select("status").execute()
+        response = supabase.table("wellbore_data").select("status").execute()
+        if response.error:
+            raise Exception(response.error.message)
+        records = response.data
         status_counts = {}
         for record in records:
             status = record.get('status') or 'UNKNOWN'
@@ -80,7 +89,10 @@ def query_wellbore_data(supabase: Client):
 def query_wellbore_history(supabase: Client):
     data = {}
     try:
-        records = supabase.table("wellbore_history").select("wlbwellborename").execute()
+        response = supabase.table("wellbore_history").select("wlbwellborename").execute()
+        if response.error:
+            raise Exception(response.error.message)
+        records = response.data
         unique_wells = set()
         for record in records:
             name = record.get('wlbwellborename')
