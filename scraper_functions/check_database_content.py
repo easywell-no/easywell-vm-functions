@@ -35,8 +35,8 @@ def query_wellbore_data(supabase: Client):
     # Number of EXPLORATION, DEVELOPMENT, OTHER, and total number of wells
     try:
         response = supabase.table("wellbore_data").select("wlbwelltype").execute()
-        if response.error:
-            raise Exception(response.error.message)
+        if response.status_code != 200:
+            raise Exception(response.json())
         type_counts = {}
         for record in response.data:
             well_type = record.get('wlbwelltype') or 'UNKNOWN'
@@ -50,8 +50,8 @@ def query_wellbore_data(supabase: Client):
     # Total number of wells
     try:
         response = supabase.table("wellbore_data").select("wlbwellborename", count='exact').execute()
-        if response.error:
-            raise Exception(response.error.message)
+        if response.status_code != 200:
+            raise Exception(response.json())
         total_wells = response.count
         data['wellbore_data']['total_wells'] = total_wells
     except Exception as e:
@@ -61,8 +61,8 @@ def query_wellbore_data(supabase: Client):
     # Number of TRUE and FALSE in needs_rescrape
     try:
         response = supabase.table("wellbore_data").select("needs_rescrape").execute()
-        if response.error:
-            raise Exception(response.error.message)
+        if response.status_code != 200:
+            raise Exception(response.json())
         needs_rescrape_counts = {"True": 0, "False": 0, "NULL": 0}
         for record in response.data:
             value = record.get('needs_rescrape')
@@ -80,8 +80,8 @@ def query_wellbore_data(supabase: Client):
     # Number of waiting, reserved, completed in status
     try:
         response = supabase.table("wellbore_data").select("status").execute()
-        if response.error:
-            raise Exception(response.error.message)
+        if response.status_code != 200:
+            raise Exception(response.json())
         status_counts = {}
         for record in response.data:
             status = record.get('status') or 'UNKNOWN'
@@ -97,8 +97,8 @@ def query_wellbore_history(supabase: Client):
     data = {}
     try:
         response = supabase.table("wellbore_history").select("wlbwellborename").execute()
-        if response.error:
-            raise Exception(response.error.message)
+        if response.status_code != 200:
+            raise Exception(response.json())
         unique_wells = set()
         for record in response.data:
             name = record.get('wlbwellborename')
