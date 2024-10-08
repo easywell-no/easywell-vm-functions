@@ -39,21 +39,30 @@ def scrape_factpages(supabase: Client):
 
         # If the well is not of type 'EXPLORATION', mark as completed immediately
         if well_type != 'EXPLORATION':
-            supabase.table('wellbore_data')\
-                .update({'status': 'completed', 'needs_rescrape': False})\
-                .eq('wlbwellborename', wlbwellborename)\
-                .execute()
-            logging.info(f"Non-exploration well '{wlbwellborename}' marked as completed and skipped.")
+            try:
+                update_response = supabase.table('wellbore_data')\
+                    .update({'status': 'completed', 'needs_rescrape': False})\
+                    .eq('wlbwellborename', wlbwellborename)\
+                    .execute()
+                if update_response.error:
+                    logging.error(f"Failed to update non-exploration well '{wlbwellborename}': {update_response.error}")
+                else:
+                    logging.info(f"Non-exploration well '{wlbwellborename}' marked as completed and skipped.")
+            except Exception as e:
+                logging.error(f"Exception while updating non-exploration well '{wlbwellborename}': {e}", exc_info=True)
             continue
 
         logging.info(f"Reserving wellbore '{wlbwellborename}' for scraping.")
 
         try:
             # Set the status to 'reserved' before starting scraping
-            supabase.table('wellbore_data')\
+            update_response = supabase.table('wellbore_data')\
                 .update({'status': 'reserved'})\
                 .eq('wlbwellborename', wlbwellborename)\
                 .execute()
+            if update_response.error:
+                logging.error(f"Failed to set status to 'reserved' for well '{wlbwellborename}': {update_response.error}")
+                continue  # Skip to the next well
 
             # Perform scraping for the well
             scrape_wellbore_history(supabase, wlbwellborename, factpage_url)
@@ -63,18 +72,25 @@ def scrape_factpages(supabase: Client):
             scrape_general_info(supabase, wlbwellborename, factpage_url)
 
             # Mark as completed after successful scraping
-            supabase.table('wellbore_data')\
+            update_response = supabase.table('wellbore_data')\
                 .update({'status': 'completed', 'needs_rescrape': False})\
                 .eq('wlbwellborename', wlbwellborename)\
                 .execute()
-
-            logging.info(f"Successfully scraped and updated well '{wlbwellborename}'.")
+            if update_response.error:
+                logging.error(f"Failed to set status to 'completed' for well '{wlbwellborename}': {update_response.error}")
+            else:
+                logging.info(f"Successfully scraped and updated well '{wlbwellborename}'.")
         except Exception as scrape_exception:
             logging.error(f"Failed to scrape wellbore '{wlbwellborename}': {scrape_exception}", exc_info=True)
             # Mark as error if scraping fails
-            supabase.table('wellbore_data')\
-                .update({'status': 'error', 'needs_rescrape': False})\
-                .eq('wlbwellborename', wlbwellborename)\
-                .execute()
+            try:
+                update_response = supabase.table('wellbore_data')\
+                    .update({'status': 'error', 'needs_rescrape': False})\
+                    .eq('wlbwellborename', wlbwellborename)\
+                    .execute()
+                if update_response.error:
+                    logging.error(f"Failed to set status to 'error' for well '{wlbwellborename}': {update_response.error}")
+            except Exception as e:
+                logging.error(f"Exception while setting status to 'error' for well '{wlbwellborename}': {e}", exc_info=True)
 
     logging.info("Completed scrape_factpages process.")
