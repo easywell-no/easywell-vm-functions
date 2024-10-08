@@ -4,13 +4,24 @@ import os
 import json
 import logging
 from dotenv import load_dotenv
-from supabase import create_client, Client, SupabaseException
+from supabase import create_client, Client
 
 def setup_logging():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+    logging.basicConfig(
+        filename='check_database_content.log',
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(message)s'
+    )
 
 def load_env_variables():
-    load_dotenv()
+    load_env_variables_called = False
+    try:
+        load_dotenv()
+        load_env_variables_called = True
+    except Exception as e:
+        logging.error(f"Failed to load environment variables: {e}")
+    if not load_env_variables_called:
+        logging.warning("Environment variables might not be loaded properly.")
 
 def get_supabase_client() -> Client:
     SUPABASE_URL = os.getenv('SUPABASE_URL')
@@ -35,25 +46,24 @@ def query_wellbore_data(supabase: Client):
 
     # Number of EXPLORATION, DEVELOPMENT, OTHER, and total number of wells
     try:
-        records = supabase.table("wellbore_data").select("wlbwelltype").execute()
+        response = supabase.table("wellbore_data").select("wlbwelltype").execute()
+        records = response.data
         type_counts = {}
-        for record in records.data:
+        for record in records:
             well_type = record.get('wlbwelltype') or 'UNKNOWN'
             type_counts[well_type] = type_counts.get(well_type, 0) + 1
         data['wellbore_data']['type_counts'] = type_counts
         data['wellbore_data']['total_wells'] = sum(type_counts.values())
-    except SupabaseException as e:
-        logging.error(f"Error fetching type counts from wellbore_data: {e}")
-        raise
     except Exception as e:
-        logging.error(f"Unexpected error: {e}")
+        logging.error(f"Error fetching type counts from wellbore_data: {e}")
         raise
 
     # Number of TRUE and FALSE in needs_rescrape
     try:
-        records = supabase.table("wellbore_data").select("needs_rescrape").execute()
+        response = supabase.table("wellbore_data").select("needs_rescrape").execute()
+        records = response.data
         needs_rescrape_counts = {"True": 0, "False": 0, "NULL": 0}
-        for record in records.data:
+        for record in records:
             value = record.get('needs_rescrape')
             if value is True:
                 needs_rescrape_counts["True"] += 1
@@ -62,26 +72,21 @@ def query_wellbore_data(supabase: Client):
             else:
                 needs_rescrape_counts["NULL"] += 1
         data['wellbore_data']['needs_rescrape'] = needs_rescrape_counts
-    except SupabaseException as e:
-        logging.error(f"Error fetching needs_rescrape counts from wellbore_data: {e}")
-        raise
     except Exception as e:
-        logging.error(f"Unexpected error: {e}")
+        logging.error(f"Error fetching needs_rescrape counts from wellbore_data: {e}")
         raise
 
     # Number of waiting, reserved, completed in status
     try:
-        records = supabase.table("wellbore_data").select("status").execute()
+        response = supabase.table("wellbore_data").select("status").execute()
+        records = response.data
         status_counts = {}
-        for record in records.data:
+        for record in records:
             status = record.get('status') or 'UNKNOWN'
             status_counts[status] = status_counts.get(status, 0) + 1
         data['wellbore_data']['status_counts'] = status_counts
-    except SupabaseException as e:
-        logging.error(f"Error fetching status counts from wellbore_data: {e}")
-        raise
     except Exception as e:
-        logging.error(f"Unexpected error: {e}")
+        logging.error(f"Error fetching status counts from wellbore_data: {e}")
         raise
 
     return data
@@ -89,18 +94,16 @@ def query_wellbore_data(supabase: Client):
 def query_wellbore_history(supabase: Client):
     data = {}
     try:
-        records = supabase.table("wellbore_history").select("wlbwellborename").execute()
+        response = supabase.table("wellbore_history").select("wlbwellborename").execute()
+        records = response.data
         unique_wells = set()
-        for record in records.data:
+        for record in records:
             name = record.get('wlbwellborename')
             if name:
                 unique_wells.add(name)
         data['wellbore_history'] = {'unique_wells': len(unique_wells)}
-    except SupabaseException as e:
-        logging.error(f"Error fetching unique wells from wellbore_history: {e}")
-        raise
     except Exception as e:
-        logging.error(f"Unexpected error: {e}")
+        logging.error(f"Error fetching unique wells from wellbore_history: {e}")
         raise
     return data
 
@@ -111,6 +114,7 @@ def main():
     try:
         supabase = get_supabase_client()
     except Exception as e:
+        # Ensure that only the JSON output is printed to stdout
         print(json.dumps({"error": str(e)}))
         return
 
@@ -118,6 +122,7 @@ def main():
         data = {}
         data.update(query_wellbore_data(supabase))
         data.update(query_wellbore_history(supabase))
+        # Print only the JSON data to stdout
         print(json.dumps(data))
     except Exception as e:
         logging.error(f"Error querying the database: {e}")
