@@ -2,7 +2,7 @@
 
 import logging
 import math
-import pandas as pd
+from utils.well_profiler import get_well_profiles
 
 def haversine(lon1, lat1, lon2, lat2):
     """
@@ -25,7 +25,7 @@ def fetch_well_data(supabase, input_lat, input_lon):
     """
     Fetch wells from the database, calculate distances, and retrieve necessary information.
     Returns:
-        dict: Contains 'closest_wells', 'general_info', 'wellbore_history'.
+        dict: Contains 'well_profiles' and 'closest_wells'.
     """
     logging.info("Stage 2: Data Retrieval started.")
     try:
@@ -71,48 +71,20 @@ def fetch_well_data(supabase, input_lat, input_lon):
 
     well_names = [well['well_name'] for well in closest_exploration_wells]
 
-    # Fetch general_info for the selected wells
-    try:
-        fields_to_display = [
-            'wlbwellborename', 'type', 'boreoperatoer', 'totalt_vertikalt_dybde_tvd_m_rkb', 'borestart',
-            'boreslutt', 'funn', 'eldste_penetrerte_formasjon', 'vanndybde_m_m',
-            'avstand_boredekk_m_m', 'ns_grader', 'ov_grader', 'faktakart_i_nytt_vindu'
-        ]
-        response = supabase.table('general_info').select(', '.join(fields_to_display)).in_('wlbwellborename', well_names).execute()
-        general_info_data = response.data
-        logging.info(f"Fetched general info for {len(general_info_data)} wells.")
-    except Exception as e:
-        logging.error(f"Error fetching general info: {e}")
-        general_info_data = []
+    # Fetch well profiles for the selected wells
+    well_profiles = get_well_profiles(well_names, supabase)
+    logging.info(f"Retrieved well profiles for {len(well_profiles)} wells.")
 
-    # Convert general_info to DataFrame
-    df_general_info = pd.DataFrame(general_info_data)
-    if df_general_info.empty:
-        logging.warning("No general info data found for the selected wells.")
-    else:
-        df_general_info.fillna('N/A', inplace=True)
-        df_general_info['wlbwellborename'] = df_general_info['wlbwellborename'].astype(str)
-
-    # Fetch wellbore_history for the selected wells
-    try:
-        response = supabase.table('wellbore_history').select('*').in_('wlbwellborename', well_names).execute()
-        history_data = response.data
-        logging.info(f"Fetched wellbore history for {len(history_data)} records.")
-    except Exception as e:
-        logging.error(f"Error fetching wellbore history: {e}")
-        history_data = []
-
-    # Convert wellbore_history to DataFrame
-    df_wellbore_history = pd.DataFrame(history_data)
-    if df_wellbore_history.empty:
-        logging.warning("No wellbore history data found for the selected wells.")
-    else:
-        df_wellbore_history.fillna('N/A', inplace=True)
-        df_wellbore_history['wlbwellborename'] = df_wellbore_history['wlbwellborename'].astype(str)
+    # Include distance in well profiles
+    for well in closest_exploration_wells:
+        well_name = well['well_name']
+        if well_name in well_profiles:
+            well_profiles[well_name]['distance_km'] = well['distance_km']
+        else:
+            logging.warning(f"Well name '{well_name}' not found in well profiles.")
 
     logging.info("Stage 2: Data Retrieval completed.")
     return {
         'closest_wells': closest_exploration_wells,
-        'general_info': df_general_info,
-        'wellbore_history': df_wellbore_history
+        'well_profiles': well_profiles
     }

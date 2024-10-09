@@ -6,6 +6,7 @@ from supabase import create_client, Client
 from logging.handlers import RotatingFileHandler
 from all_scrape_and_store_functions.update_wellbore import update_wellbore_data
 from all_scrape_and_store_functions.scrape_factpages import scrape_factpages
+from all_scrape_and_store_functions.well_profile_and_vectorize import well_profile_and_vectorize
 from cleaner import cleanup
 
 # Load environment variables
@@ -50,15 +51,22 @@ except Exception as e:
 
 def main():
     try:
-        # Update wellbore data
-        update_wellbore_data(supabase)
+        # Update and store wellbore data
+        #update_wellbore_data(supabase)
         logging.info("Wellbore data update completed successfully.")
     except Exception as e:
         logging.error(f"An error occurred during wellbore data update: {e}", exc_info=True)
     
     try:
-        # Scrape factpages
-        scrape_factpages(supabase)
+        # Scrape and store factpages
+        #scrape_factpages(supabase)
+        logging.info("Factpages scraped successfully.")
+    except Exception as e:
+        logging.error(f"An error occurred while scraping factpages: {e}", exc_info=True)
+
+    try:
+        # Make well-profiles, vectorize and store
+        well_profile_and_vectorize(supabase)
         logging.info("Factpages scraped successfully.")
     except Exception as e:
         logging.error(f"An error occurred while scraping factpages: {e}", exc_info=True)
