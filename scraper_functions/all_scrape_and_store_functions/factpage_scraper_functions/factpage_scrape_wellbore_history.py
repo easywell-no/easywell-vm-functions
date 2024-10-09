@@ -9,6 +9,16 @@ def scrape_wellbore_history(supabase: Client, wlbwellborename: str, factpage_url
     max_retries = 1  # Set to a positive integer
     html_content = None  # Initialize html_content
 
+    # Delete existing data for the wellbore
+    try:
+        supabase.table('wellbore_history')\
+            .delete()\
+            .eq('wlbwellborename', wlbwellborename)\
+            .execute()
+        logging.info(f"Deleted existing wellbore history data for {wlbwellborename}")
+    except Exception as e:
+        logging.error(f"Failed to delete existing wellbore history data for {wlbwellborename}: {e}")
+
     for attempt in range(max_retries):
         try:
             headers = {

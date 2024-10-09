@@ -9,6 +9,16 @@ def scrape_casing_and_tests(supabase: Client, wlbwellborename: str, factpage_url
     max_retries = 3
     html_content = None
 
+    try:
+        supabase.table('casing_and_tests')\
+            .delete()\
+            .eq('wlbwellborename', wlbwellborename)\
+            .execute()
+        logging.info(f"Deleted existing casing and tests data for {wlbwellborename}")
+    except Exception as e:
+        logging.error(f"Failed to delete existing casing and tests data for {wlbwellborename}: {e}")
+    
+
     for attempt in range(max_retries):
         try:
             headers = {

@@ -11,6 +11,15 @@ def scrape_general_info(supabase: Client, wlbwellborename: str, factpage_url: st
     max_retries = 3
     html_content = None
 
+    try:
+        supabase.table('general_info')\
+            .delete()\
+            .eq('wlbwellborename', wlbwellborename)\
+            .execute()
+        logging.info(f"Deleted existing general info data for {wlbwellborename}")
+    except Exception as e:
+        logging.error(f"Failed to delete existing general info data for {wlbwellborename}: {e}")
+
     # Retry mechanism for fetching the page
     for attempt in range(max_retries):
         try:

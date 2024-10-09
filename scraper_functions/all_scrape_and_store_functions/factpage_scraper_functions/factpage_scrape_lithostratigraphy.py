@@ -9,6 +9,16 @@ def scrape_lithostratigraphy(supabase: Client, wlbwellborename: str, factpage_ur
     max_retries = 1
     html_content = None
 
+    # Delete existing data for the wellbore
+    try:
+        supabase.table('lithostratigraphy')\
+            .delete()\
+            .eq('wlbwellborename', wlbwellborename)\
+            .execute()
+        logging.info(f"Deleted existing lithostratigraphy data for {wlbwellborename}")
+    except Exception as e:
+        logging.error(f"Failed to delete existing lithostratigraphy data for {wlbwellborename}: {e}")
+
     for attempt in range(max_retries):
         try:
             headers = {

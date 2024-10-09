@@ -9,6 +9,17 @@ def scrape_drilling_fluid(supabase: Client, wlbwellborename: str, factpage_url: 
     max_retries = 3
     html_content = None
 
+    # Delete existing data for the wellbore
+    try:
+        supabase.table('drilling_fluid')\
+            .delete()\
+            .eq('wlbwellborename', wlbwellborename)\
+            .execute()
+        logging.info(f"Deleted existing drilling fluid data for {wlbwellborename}")
+    except Exception as e:
+        logging.error(f"Failed to delete existing drilling fluid data for {wlbwellborename}: {e}")
+    
+
     for attempt in range(max_retries):
         try:
             headers = {

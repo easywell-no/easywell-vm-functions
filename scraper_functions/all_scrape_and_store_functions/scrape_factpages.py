@@ -11,19 +11,32 @@ def scrape_factpages(supabase: Client):
     logging.info("Starting scrape_factpages process.")
 
     try:
-        # Select wells that need rescraping and are in 'waiting' status
-        response = supabase.table('wellbore_data')\
-            .select('wlbwellborename, wlbfactpageurl, wlbwelltype')\
-            .eq('needs_rescrape', True)\
-            .eq('status', 'waiting')\
-            .execute()
+        # Initialize list to collect all wells to scrape
+        wells_to_scrape = []
+        page_size = 1000  # Supabase default limit
+        current_start = 0
 
-        wells_to_scrape = response.data
+        while True:
+            response = supabase.table('wellbore_data')\
+                .select('wlbwellborename, wlbfactpageurl, wlbwelltype')\
+                .eq('needs_rescrape', True)\
+                .eq('status', 'waiting')\
+                .range(current_start, current_start + page_size - 1)\
+                .execute()
+            if not response.data:
+                break
+            wells_to_scrape.extend(response.data)
+            logging.info(f"Fetched {len(response.data)} wells in batch starting at {current_start}.")
+            if len(response.data) < page_size:
+                # No more data
+                break
+            current_start += page_size
+
         if not wells_to_scrape:
             logging.info("No wells require rescraping at this time.")
             return
 
-        logging.info(f"Found {len(wells_to_scrape)} wells to scrape.")
+        logging.info(f"Found total of {len(wells_to_scrape)} wells to scrape.")
     except Exception as e:
         logging.error(f"Error querying wells: {e}", exc_info=True)
         return
