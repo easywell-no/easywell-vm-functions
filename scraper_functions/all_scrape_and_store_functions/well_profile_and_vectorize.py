@@ -1,13 +1,8 @@
 # utils/well_profile_and_vectorize.py
 
-import logging
-from supabase import Client
-from utils.well_profiler import get_well_profiles
-from utils.vectorize import vectorize_well_profiles
-
-def well_profile_and_vectorize(supabase: Client):
+def well_profile_and_vectorize(supabase: Client, test_mode=False):
     logging.info("Starting well profile and vectorization process.")
-    page_size = 1000  # Define page size for pagination
+    page_size = 10 if test_mode else 1000  # Use smaller page size for testing
     current_start = 0
 
     while True:
@@ -29,11 +24,19 @@ def well_profile_and_vectorize(supabase: Client):
             well_profiles = get_well_profiles(well_names, supabase)
             logging.info(f"Generated profiles for {len(well_profiles)} wells.")
 
+            if not well_profiles:
+                logging.warning("No well profiles generated for the fetched well names.")
+                current_start += page_size
+                continue
+
             # Vectorize and store well profiles
             vectorize_well_profiles(well_profiles, supabase)
 
             # Increment the start point for the next batch
             current_start += page_size
+
+            if test_mode:
+                break  # Stop after first batch in test mode
 
         except Exception as e:
             logging.error(f"Error during well profile and vectorization process: {e}", exc_info=True)
