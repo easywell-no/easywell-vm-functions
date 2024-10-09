@@ -2,19 +2,9 @@
 
 import logging
 from typing import List
-import openai
+import openai  # Ensure you have the OpenAI Python SDK installed (pip install openai)
 
 def get_embedding(text: str, model: str = "text-embedding-ada-002") -> List[float]:
-    """
-    Generate an embedding for the given text using OpenAI's API.
-
-    Args:
-        text (str): The text to embed.
-        model (str): The OpenAI embedding model to use.
-
-    Returns:
-        List[float]: The embedding vector.
-    """
     try:
         response = openai.Embedding.create(
             model=model,
