@@ -46,60 +46,63 @@ def scrape_lithostratigraphy(supabase: Client, wlbwellborename: str, factpage_ur
         logging.error(f"No HTML content retrieved for {wlbwellborename}")
         return
 
-    soup = BeautifulSoup(html_content, 'html.parser')
+    try:
+        soup = BeautifulSoup(html_content, 'html.parser')
 
-    # Find the lithostratigraphy section
-    litho_section = soup.find('li', id='litostratigrafi')
-    if not litho_section:
-        logging.warning(f"'Litostratigrafi' section not found for {wlbwellborename}")
-        return
-    else:
-        logging.info(f"Found 'Litostratigrafi' section for {wlbwellborename}")
+        # Find the lithostratigraphy section
+        litho_section = soup.find('li', id='litostratigrafi')
+        if not litho_section:
+            logging.warning(f"'Litostratigrafi' section not found for {wlbwellborename}")
+            return
+        else:
+            logging.info(f"Found 'Litostratigrafi' section for {wlbwellborename}")
 
-    # Find the table within the section
-    table = litho_section.find('table', class_='a1820 uk-table-striped')
-    if not table:
-        logging.warning(f"No lithostratigraphy table found for {wlbwellborename}")
-        return
+        # Find the table within the section
+        table = litho_section.find('table', class_='a1820 uk-table-striped')
+        if not table:
+            logging.warning(f"No lithostratigraphy table found for {wlbwellborename}")
+            return
 
-    tbody = table.find('tbody')
-    if not tbody:
-        logging.warning(f"No table body found in lithostratigraphy table for {wlbwellborename}")
-        return
+        tbody = table.find('tbody')
+        if not tbody:
+            logging.warning(f"No table body found in lithostratigraphy table for {wlbwellborename}")
+            return
 
-    rows = tbody.find_all('tr')
-    if not rows:
-        logging.warning(f"No data rows found in lithostratigraphy table for {wlbwellborename}")
-        return
+        rows = tbody.find_all('tr')
+        if not rows:
+            logging.warning(f"No data rows found in lithostratigraphy table for {wlbwellborename}")
+            return
 
-    for row in rows:
-        cells = row.find_all('td')
-        if len(cells) != 2:
-            logging.warning(f"Unexpected number of cells in row for {wlbwellborename}")
-            continue
-        depth_cell = cells[0]
-        unit_cell = cells[1]
-        # Extract text
-        depth_text = depth_cell.get_text(strip=True)
-        unit_text = unit_cell.get_text(strip=True)
-        # Process the data
-        try:
-            depth = float(depth_text.replace(',', '.'))  # Handle commas
-        except ValueError:
-            logging.warning(f"Invalid depth value '{depth_text}' for {wlbwellborename}")
-            continue
+        for row in rows:
+            cells = row.find_all('td')
+            if len(cells) != 2:
+                logging.warning(f"Unexpected number of cells in row for {wlbwellborename}")
+                continue
+            depth_cell = cells[0]
+            unit_cell = cells[1]
+            # Extract text
+            depth_text = depth_cell.get_text(strip=True)
+            unit_text = unit_cell.get_text(strip=True)
+            # Process the data
+            try:
+                depth = float(depth_text.replace(',', '.'))  # Handle commas
+            except ValueError:
+                logging.warning(f"Invalid depth value '{depth_text}' for {wlbwellborename}")
+                continue
 
-        data = {
-            'wlbwellborename': wlbwellborename,
-            'top_depth_m_md_rkb': depth,
-            'lithostratigraphic_unit': unit_text
-        }
+            data = {
+                'wlbwellborename': wlbwellborename,
+                'top_depth_m_md_rkb': depth,
+                'lithostratigraphic_unit': unit_text
+            }
 
-        # Upsert the data
-        try:
-            response = supabase.table('lithostratigraphy') \
-                .upsert(data, on_conflict='wlbwellborename,top_depth_m_md_rkb,lithostratigraphic_unit') \
-                .execute()
-            logging.info(f"Upserted lithostratigraphy data for {wlbwellborename} at depth {depth}")
-        except Exception as e:
-            logging.error(f"Exception during database operation for {wlbwellborename}: {e}")
+            # Upsert the data
+            try:
+                response = supabase.table('lithostratigraphy') \
+                    .upsert(data, on_conflict='wlbwellborename,top_depth_m_md_rkb,lithostratigraphic_unit') \
+                    .execute()
+                logging.info(f"Upserted lithostratigraphy data for {wlbwellborename} at depth {depth}")
+            except Exception as e:
+                logging.error(f"Exception during database operation for {wlbwellborename}: {e}")
+    except Exception as e:
+        logging.error(f"Exception during scraping lithostratigraphy for {wlbwellborename}: {e}", exc_info=True)
