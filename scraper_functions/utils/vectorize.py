@@ -26,9 +26,9 @@ def vectorize_well_profiles(well_profiles, supabase: Client):
                     logging.warning(f"No embedding generated for well '{well_name}'. Skipping.")
                     continue
                 logging.debug(f"Embedding for well '{well_name}': {embedding}")
-                logging.info(f"Generated embedding for well {well_name}.")
+                logging.info(f"Generated embedding for well '{well_name}'.")
             except Exception as e:
-                logging.error(f"Error generating embedding for well {well_name}: {e}")
+                logging.error(f"Error generating embedding for well '{well_name}': {e}")
                 continue
 
             # Verify data types

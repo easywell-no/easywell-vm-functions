@@ -20,12 +20,23 @@ load_dotenv()
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
 def get_embedding(text: str, model: str = "text-embedding-ada-002") -> List[float]:
+    """
+    Generate an embedding for the given text using OpenAI's API.
+
+    Args:
+        text (str): The text to embed.
+        model (str): The OpenAI embedding model to use.
+
+    Returns:
+        List[float]: The embedding vector.
+    """
     try:
         if not openai.api_key:
             logging.error("OpenAI API key is not set. Please set the OPENAI_API_KEY environment variable.")
             raise EnvironmentError("OpenAI API key is not set.")
 
-        response = openai.Embedding.create(
+        # Updated method call to use the new embeddings API
+        response = openai.embeddings.create(
             model=model,
             input=text
         )
