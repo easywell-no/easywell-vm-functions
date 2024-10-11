@@ -49,17 +49,15 @@ def vectorize_well_profiles(well_profiles, supabase: Client):
             }
 
             try:
-                response = supabase.table('profiled_wells').upsert(data).execute()
+                # Specify returning='representation' to get the inserted data
+                response = supabase.table('profiled_wells').upsert(data, returning='representation').execute()
                 logging.debug(f"Upsert response for well '{well_name}': {response}")
 
-                # Check if 'error' is present and not None
-                error = getattr(response, 'error', None)
+                # Check if 'data' is present in the response
                 data_present = getattr(response, 'data', None)
 
-                if error is None and data_present:
+                if data_present:
                     logging.info(f"Stored well profile and embedding for {well_name}.")
-                elif error:
-                    logging.error(f"Error inserting/updating {well_name}: {error}")
                 else:
                     logging.error(f"Error inserting/updating {well_name}: Unexpected response structure.")
             except Exception as e:

@@ -5,7 +5,15 @@ import logging
 def get_well_profiles(well_names, supabase):
     logging.info("Fetching well profiles for the specified wells.")
     
-    well_profiles = {well_name: {} for well_name in well_names}
+    # Initialize the well_profiles dictionary with all required keys
+    well_profiles = {well_name: {
+        'wellbore_data': None,
+        'general_info': None,
+        'wellbore_history': [],
+        'lithostratigraphy': [],
+        'casing_and_tests': [],
+        'drilling_fluid': []
+    } for well_name in well_names}
     
     tables = [
         ('wellbore_data', 'wellbore_data'),
@@ -26,8 +34,6 @@ def get_well_profiles(well_names, supabase):
                 well_name = record.get('wlbwellborename')
                 if well_name in well_profiles:
                     if data_key in ['wellbore_history', 'lithostratigraphy', 'casing_and_tests', 'drilling_fluid']:
-                        if data_key not in well_profiles[well_name]:
-                            well_profiles[well_name][data_key] = []
                         well_profiles[well_name][data_key].append(record)
                     else:
                         well_profiles[well_name][data_key] = record
@@ -39,7 +45,8 @@ def get_well_profiles(well_names, supabase):
     
     # Log wells with incomplete profiles
     for well_name, profile in well_profiles.items():
-        missing_keys = [key for key in ['lithostratigraphy', 'wellbore_history'] if key not in profile]
+        missing_keys = [key for key in ['lithostratigraphy', 'wellbore_history', 'casing_and_tests', 'drilling_fluid'] 
+                        if not profile.get(key)]
         if missing_keys:
             logging.warning(f"Well '{well_name}' is missing data from tables: {', '.join(missing_keys)}")
     
