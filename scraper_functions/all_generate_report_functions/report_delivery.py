@@ -5,7 +5,7 @@ from fpdf import FPDF
 from typing import Dict
 import os
 from datetime import datetime
-from utils.get_supabase_client import get_supabase_client  # Corrected import
+from utils.get_supabase_client import get_supabase_client
 
 def deliver_report(report: Dict):
     """
@@ -21,19 +21,19 @@ def deliver_report(report: Dict):
 
     # Title
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, report['title'], ln=True, align='C')
+    pdf.cell(0, 10, report.get('title', 'Report'), ln=True, align='C')
 
     # Summary
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, "Summary", ln=True)
     pdf.set_font("Arial", '', 12)
-    pdf.multi_cell(0, 10, report['summary'])
+    pdf.multi_cell(0, 10, report.get('summary', 'No summary provided.'))
 
     # Wells Information
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, "Nearby Wells", ln=True)
     pdf.set_font("Arial", '', 12)
-    for well_name, profile in report['wells'].items():
+    for well_name, profile in report.get('wells', {}).items():
         pdf.cell(0, 10, f"Well Name: {well_name}", ln=True)
         pdf.cell(0, 10, f"Distance: {profile.get('distance_km', 'N/A')} km", ln=True)
         pdf.cell(0, 10, f"General Info: {profile.get('general_info', 'N/A')}", ln=True)
@@ -47,7 +47,7 @@ def deliver_report(report: Dict):
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(0, 10, "AI-Driven Risk Analysis", ln=True)
     pdf.set_font("Arial", '', 12)
-    pdf.multi_cell(0, 10, report['ai_insights'])
+    pdf.multi_cell(0, 10, report.get('ai_insights', 'No insights provided.'))
 
     # Save PDF to a temporary file
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -58,12 +58,12 @@ def deliver_report(report: Dict):
     # Upload PDF to Supabase Storage
     try:
         supabase = get_supabase_client()
-        bucket_name = os.getenv('SUPABASE_BUCKET_NAME', 'reports')  # Ensure you have a 'reports' bucket
-        file_path = f"{pdf_filename}"  # Directly placing in the bucket's root
+        bucket_name = os.getenv('SUPABASE_BUCKET_NAME', 'reports')
+        file_path = pdf_filename  # Placing in the bucket's root
 
         with open(pdf_filename, 'rb') as file:
             response = supabase.storage.from_(bucket_name).upload(file_path, file, {'content-type': 'application/pdf'})
-        
+
         if response.status_code in [200, 201]:
             logging.info(f"PDF report '{pdf_filename}' uploaded to Supabase bucket '{bucket_name}'.")
         else:
