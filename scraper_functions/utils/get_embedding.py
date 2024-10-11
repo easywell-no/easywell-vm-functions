@@ -40,7 +40,8 @@ def get_embedding(text: str, model: str = "text-embedding-ada-002") -> List[floa
             model=model,
             input=text
         )
-        embedding = response['data'][0]['embedding']
+        # Access the embedding correctly for the updated SDK
+        embedding = response.data[0].embedding
         if not isinstance(embedding, list) or not all(isinstance(x, (float, int)) for x in embedding):
             raise ValueError("Embedding is not a list of floats.")
         return embedding

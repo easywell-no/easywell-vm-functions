@@ -1,3 +1,5 @@
+# scrape_and_store.py
+
 import os
 import logging
 import sys
@@ -52,14 +54,14 @@ except Exception as e:
 def main():
     try:
         # Update and store wellbore data
-        #update_wellbore_data(supabase)
+        # update_wellbore_data(supabase)
         logging.info("Wellbore data update completed successfully.")
     except Exception as e:
         logging.error(f"An error occurred during wellbore data update: {e}", exc_info=True)
     
     try:
         # Scrape and store factpages
-        #scrape_factpages(supabase)
+        # scrape_factpages(supabase)
         logging.info("Factpages scraped successfully.")
     except Exception as e:
         logging.error(f"An error occurred while scraping factpages: {e}", exc_info=True)
@@ -67,9 +69,9 @@ def main():
     try:
         # Make well-profiles, vectorize and store
         well_profile_and_vectorize(supabase)
-        logging.info("Factpages scraped successfully.")
+        logging.info("Well profile and vectorization completed successfully.")
     except Exception as e:
-        logging.error(f"An error occurred while scraping factpages: {e}", exc_info=True)
+        logging.error(f"An error occurred during well profile and vectorization: {e}", exc_info=True)
     
     try:
         # Cleanup process
