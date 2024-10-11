@@ -41,7 +41,7 @@ def generate_ai_insights(well_profiles):
 
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-4o-mini",  # Updated model name
             messages=[
                 {"role": "system", "content": "You are a helpful assistant specialized in geological risk analysis."},
                 {"role": "user", "content": prompt}

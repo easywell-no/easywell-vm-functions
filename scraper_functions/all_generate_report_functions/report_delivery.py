@@ -59,13 +59,24 @@ def deliver_report(report: Dict):
     try:
         supabase = get_supabase_client()
         bucket_name = os.getenv('SUPABASE_BUCKET_NAME', 'reports')  # Ensure you have a 'reports' bucket
+        file_path = f"reports/{pdf_filename}"
+
         with open(pdf_filename, 'rb') as file:
-            supabase.storage.from_(bucket_name).upload(f"reports/{pdf_filename}", file, {'content-type': 'application/pdf'})
-        logging.info(f"PDF report '{pdf_filename}' uploaded to Supabase bucket '{bucket_name}'.")
+            response = supabase.storage.from_(bucket_name).upload(file_path, file, {'content-type': 'application/pdf'}, upsert=True)
+        
+        if response.status_code in [200, 201]:
+            logging.info(f"PDF report '{pdf_filename}' uploaded to Supabase bucket '{bucket_name}'.")
+        else:
+            logging.error(f"Failed to upload PDF report to Supabase: {response.json()}")
+            return
 
         # Optionally, get the public URL
-        public_url = supabase.storage.from_(bucket_name).get_public_url(f"reports/{pdf_filename}").publicURL
-        logging.info(f"Public URL for the report: {public_url}")
+        public_url_response = supabase.storage.from_(bucket_name).get_public_url(file_path)
+        if 'publicURL' in public_url_response:
+            public_url = public_url_response['publicURL']
+            logging.info(f"Public URL for the report: {public_url}")
+        else:
+            logging.warning("Failed to retrieve public URL for the report.")
 
         # Clean up the local file if desired
         os.remove(pdf_filename)
