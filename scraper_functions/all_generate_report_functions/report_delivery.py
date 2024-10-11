@@ -37,10 +37,10 @@ def deliver_report(report: Dict):
         pdf.cell(0, 10, f"Well Name: {well_name}", ln=True)
         pdf.cell(0, 10, f"Distance: {profile.get('distance_km', 'N/A')} km", ln=True)
         pdf.cell(0, 10, f"General Info: {profile.get('general_info', 'N/A')}", ln=True)
-        pdf.multi_cell(0, 10, f"Wellbore History: {profile.get('wellbore_history', [])}")
-        pdf.multi_cell(0, 10, f"Lithostratigraphy: {profile.get('lithostratigraphy', [])}")
-        pdf.multi_cell(0, 10, f"Casing and Tests: {profile.get('casing_and_tests', [])}")
-        pdf.multi_cell(0, 10, f"Drilling Fluid: {profile.get('drilling_fluid', [])}")
+        pdf.multi_cell(0, 10, f"Wellbore History: {profile.get('wellbore_history', 'N/A')}")
+        pdf.multi_cell(0, 10, f"Lithostratigraphy: {profile.get('lithostratigraphy', 'N/A')}")
+        pdf.multi_cell(0, 10, f"Casing and Tests: {profile.get('casing_and_tests', 'N/A')}")
+        pdf.multi_cell(0, 10, f"Drilling Fluid: {profile.get('drilling_fluid', 'N/A')}")
         pdf.cell(0, 10, "-"*50, ln=True)
 
     # AI Insights
@@ -59,10 +59,10 @@ def deliver_report(report: Dict):
     try:
         supabase = get_supabase_client()
         bucket_name = os.getenv('SUPABASE_BUCKET_NAME', 'reports')  # Ensure you have a 'reports' bucket
-        file_path = f"reports/{pdf_filename}"
+        file_path = f"{pdf_filename}"  # Directly placing in the bucket's root
 
         with open(pdf_filename, 'rb') as file:
-            response = supabase.storage.from_(bucket_name).upload(file_path, file, {'content-type': 'application/pdf'}, upsert=True)
+            response = supabase.storage.from_(bucket_name).upload(file_path, file, {'content-type': 'application/pdf'})
         
         if response.status_code in [200, 201]:
             logging.info(f"PDF report '{pdf_filename}' uploaded to Supabase bucket '{bucket_name}'.")

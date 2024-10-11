@@ -31,10 +31,10 @@ def generate_ai_insights(well_profiles):
         prompt += f"Well Name: {well_name}\n"
         prompt += f"Distance: {profile.get('distance_km', 'N/A')} km\n"
         prompt += f"General Info: {profile.get('general_info', 'N/A')}\n"
-        prompt += f"Wellbore History: {profile.get('wellbore_history', [])}\n"
-        prompt += f"Lithostratigraphy: {profile.get('lithostratigraphy', [])}\n"
-        prompt += f"Casing and Tests: {profile.get('casing_and_tests', [])}\n"
-        prompt += f"Drilling Fluid: {profile.get('drilling_fluid', [])}\n"
+        prompt += f"Wellbore History: {profile.get('wellbore_history', 'N/A')}\n"
+        prompt += f"Lithostratigraphy: {profile.get('lithostratigraphy', 'N/A')}\n"
+        prompt += f"Casing and Tests: {profile.get('casing_and_tests', 'N/A')}\n"
+        prompt += f"Drilling Fluid: {profile.get('drilling_fluid', 'N/A')}\n"
         prompt += "---\n"
 
     prompt += "\nProvide a detailed risk analysis for the new well based on the above information."
@@ -49,7 +49,8 @@ def generate_ai_insights(well_profiles):
             max_tokens=1000,
             temperature=0.7,
         )
-        ai_insight_text = response.choices[0].message['content'].strip()
+        # Access the response correctly
+        ai_insight_text = response['choices'][0]['message']['content'].strip()
         logging.info("AI-driven insights generated successfully.")
     except Exception as e:
         logging.error(f"Failed to generate AI insights: {e}")
