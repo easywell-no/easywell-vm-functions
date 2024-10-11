@@ -58,7 +58,7 @@ def deliver_report(report: Dict):
     # Upload PDF to Supabase Storage
     try:
         supabase = get_supabase_client()
-        bucket_name = os.getenv('SUPABASE_BUCKET_NAME', 'reports')
+        bucket_name = "reports"
         file_path = pdf_filename  # Placing in the bucket's root
 
         with open(pdf_filename, 'rb') as file:
