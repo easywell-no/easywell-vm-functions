@@ -78,6 +78,16 @@ if __name__ == "__main__":
     SUPABASE_KEY = os.getenv('SUPABASE_KEY')
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # Add this line
 
+    # Configure basic logging to capture environment variable status
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[
+            logging.StreamHandler()  # Log to console
+        ]
+    )
+
     # Log the status of environment variables
     if SUPABASE_URL and SUPABASE_KEY:
         logging.info("Supabase credentials are loaded.")
