@@ -2,7 +2,6 @@
 
 import logging
 import os
-import json
 from supabase import Client, create_client
 from utils.well_profiler import get_well_profiles
 from utils.vectorize import vectorize_well_profiles
