@@ -19,11 +19,22 @@ from utils import get_supabase_client
 # Configure Logging
 # ------------------------
 
+# Ensure the logs directory exists
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
 logging.basicConfig(
     filename='logs/generate_report.log',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+# Optionally, also log to console
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+logging.getLogger().addHandler(console_handler)
 
 # ------------------------
 # Main Function
@@ -60,14 +71,20 @@ def main():
 
     # Stage 4: AI-Driven Insights
     ai_insight_text = ai_insights.generate_ai_insights(well_profiles)
+    if not ai_insight_text:
+        logging.error("Failed to generate AI insights. Exiting.")
+        return
 
     # Stage 5: Report Compilation
     report = report_compilation.compile_report(well_profiles, ai_insight_text)
+    if not report:
+        logging.error("Failed to compile the report. Exiting.")
+        return
 
     # Stage 6: Report Delivery
     report_delivery.deliver_report(report)
 
-    logging.info("Report generation process completed.")
+    logging.info("Report generation process completed successfully.")
 
 if __name__ == "__main__":
     main()

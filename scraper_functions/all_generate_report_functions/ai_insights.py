@@ -19,7 +19,7 @@ def generate_ai_insights(well_profiles):
     Returns:
         str: AI-generated insights text.
     """
-    logging.info("Stage 3: AI-Driven Insights generation started.")
+    logging.info("Stage 4: AI-Driven Insights generation started.")
 
     # Construct the prompt
     prompt = "You are a geologist tasked with performing a risk analysis for a new well drilling project. " \
@@ -53,5 +53,5 @@ def generate_ai_insights(well_profiles):
         logging.error(f"Failed to generate AI insights: {e}")
         ai_insight_text = "Failed to generate AI insights due to an error."
 
-    logging.info("Stage 3: AI-Driven Insights generation completed.")
+    logging.info("Stage 4: AI-Driven Insights generation completed.")
     return ai_insight_text

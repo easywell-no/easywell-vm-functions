@@ -13,7 +13,7 @@ def deliver_report(report: Dict):
     Args:
         report (Dict): Compiled report content.
     """
-    logging.info("Stage 5: Report Delivery started.")
+    logging.info("Stage 6: Report Delivery started.")
 
     # Generate PDF
     pdf = FPDF()
@@ -74,4 +74,4 @@ def deliver_report(report: Dict):
     except Exception as e:
         logging.error(f"Failed to upload PDF report to Supabase: {e}")
 
-    logging.info("Stage 5: Report Delivery completed.")
+    logging.info("Stage 6: Report Delivery completed.")

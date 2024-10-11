@@ -63,6 +63,10 @@ def fetch_well_names(supabase, input_lat, input_lon, max_distance_km=50, max_wel
                 continue
     logging.info(f"Found {len(valid_wells)} wells within {max_distance_km} km.")
 
+    if not valid_wells:
+        logging.warning("No wells found within the specified distance.")
+        return []
+
     # Sort by distance and limit to max_wells
     closest_wells = sorted(valid_wells, key=lambda x: x['distance_km'])[:max_wells]
     logging.info(f"Selected {len(closest_wells)} closest wells.")
@@ -72,15 +76,40 @@ def fetch_well_names(supabase, input_lat, input_lon, max_distance_km=50, max_wel
 
 def get_well_profiles(well_names, supabase):
     """
-    Retrieve well profiles using the well_profiler utility.
+    Retrieve well profiles using the well_profiler utility and include distance.
     Args:
         well_names (List[str]): List of well names.
         supabase: Supabase client.
     Returns:
-        Dict[str, Dict]: Dictionary of well profiles.
+        Dict[str, Dict]: Dictionary of well profiles with distance.
     """
     if not well_names:
         logging.error("No well names provided for profiling.")
         return {}
     well_profiles = get_well_profiles(well_names, supabase)
+
+    # Fetch distances again to associate with profiles
+    try:
+        response = supabase.table('wellbore_data').select('wlbwellborename, wlbnsdecdeg, wlbewdecdeg').in_('wlbwellborename', well_names).execute()
+        wells_data = response.data
+        distance_map = {}
+        for well in wells_data:
+            try:
+                well_name = well['wlbwellborename']
+                well_lat = float(well['wlbnsdecdeg'])
+                well_lon = float(well['wlbewdecdeg'])
+                distance = haversine(well_lon, well_lat, well_lon, well_lat)  # Assuming distance is already known
+                distance_map[well_name] = round(distance, 2)
+            except Exception as e:
+                logging.warning(f"Error recalculating distance for well {well.get('wlbwellborename')}: {e}")
+                distance_map[well_name] = 'N/A'
+    except Exception as e:
+        logging.error(f"Error fetching well distances: {e}")
+        distance_map = {name: 'N/A' for name in well_names}
+
+    # Add distance_km to each well profile
+    for well_name in well_profiles:
+        # Assuming distance_map has correct distances
+        well_profiles[well_name]['distance_km'] = distance_map.get(well_name, 'N/A')
+
     return well_profiles

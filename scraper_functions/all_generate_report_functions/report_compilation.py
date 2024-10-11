@@ -11,7 +11,7 @@ def compile_report(well_profiles, ai_insight_text):
     Returns:
         Dict: Compiled report content.
     """
-    logging.info("Stage 4: Report Compilation started.")
+    logging.info("Stage 5: Report Compilation started.")
 
     report = {
         'title': 'Pre-Well Drilling Report',
@@ -21,5 +21,5 @@ def compile_report(well_profiles, ai_insight_text):
     }
 
     logging.info("Report content compiled successfully.")
-    logging.info("Stage 4: Report Compilation completed.")
+    logging.info("Stage 5: Report Compilation completed.")
     return report
