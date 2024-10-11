@@ -41,7 +41,7 @@ def generate_ai_insights(well_profiles):
 
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",  # Updated model name
+            model="gpt-4o-mini",  # Ensure this model name is correct and accessible
             messages=[
                 {"role": "system", "content": "You are a helpful assistant specialized in geological risk analysis."},
                 {"role": "user", "content": prompt}
@@ -52,9 +52,21 @@ def generate_ai_insights(well_profiles):
         # Access the response correctly
         ai_insight_text = response['choices'][0]['message']['content'].strip()
         logging.info("AI-driven insights generated successfully.")
+    except openai.error.InvalidRequestError as e:
+        logging.error(f"OpenAI InvalidRequestError: {e}")
+        ai_insight_text = "Failed to generate AI insights due to an invalid request."
+    except openai.error.AuthenticationError as e:
+        logging.error(f"OpenAI AuthenticationError: {e}")
+        ai_insight_text = "Failed to generate AI insights due to authentication error."
+    except openai.error.APIConnectionError as e:
+        logging.error(f"OpenAI APIConnectionError: {e}")
+        ai_insight_text = "Failed to generate AI insights due to a connection error."
+    except openai.error.OpenAIError as e:
+        logging.error(f"OpenAI Error: {e}")
+        ai_insight_text = "Failed to generate AI insights due to an OpenAI error."
     except Exception as e:
         logging.error(f"Failed to generate AI insights: {e}")
-        ai_insight_text = "Failed to generate AI insights due to an error."
+        ai_insight_text = "Failed to generate AI insights due to an unexpected error."
 
     logging.info("Stage 4: AI-Driven Insights generation completed.")
     return ai_insight_text
