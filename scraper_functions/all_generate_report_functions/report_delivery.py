@@ -58,16 +58,32 @@ def deliver_report(report: Dict):
     # Upload PDF to Supabase Storage
     try:
         supabase = get_supabase_client()
+        
+        # Check if the client is authenticated
+        user = supabase.auth.get_user()
+        if user.user is None:
+            logging.error("Supabase client is not authenticated.")
+            return
+
+        logging.info(f"Authenticated as user: {user.user.email}")
+
         bucket_name = "reports"
         file_path = pdf_filename  # Placing in the bucket's root
 
         with open(pdf_filename, 'rb') as file:
             response = supabase.storage.from_(bucket_name).upload(file_path, file, {'content-type': 'application/pdf'})
 
-        if response.status_code in [200, 201]:
+        # Enhanced error logging
+        if hasattr(response, 'status_code') and response.status_code in [200, 201]:
             logging.info(f"PDF report '{pdf_filename}' uploaded to Supabase bucket '{bucket_name}'.")
         else:
-            logging.error(f"Failed to upload PDF report to Supabase: {response.json()}")
+            logging.error(f"Failed to upload PDF report to Supabase.")
+            if hasattr(response, 'status_code'):
+                logging.error(f"Status code: {response.status_code}")
+            if hasattr(response, 'content'):
+                logging.error(f"Response content: {response.content}")
+            if hasattr(response, 'text'):
+                logging.error(f"Response text: {response.text}")
             return
 
         # Optionally, get the public URL
@@ -83,6 +99,7 @@ def deliver_report(report: Dict):
         logging.info(f"Local PDF file '{pdf_filename}' removed after upload.")
 
     except Exception as e:
-        logging.error(f"Failed to upload PDF report to Supabase: {e}")
+        logging.error(f"Failed to upload PDF report to Supabase: {str(e)}")
+        logging.exception("Detailed traceback:")
 
     logging.info("Stage 6: Report Delivery completed.")
