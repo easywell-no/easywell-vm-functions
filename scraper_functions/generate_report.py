@@ -7,8 +7,6 @@ import os
 from all_generate_report_functions import (
     input_handler,
     data_retrieval,
-    semantic_search,
-    data_prioritazation,
     ai_insights,
     report_compilation,
     report_delivery
@@ -49,24 +47,24 @@ def main():
     input_lat, input_lon = user_input['latitude'], user_input['longitude']
 
     # Stage 2: Data Retrieval
-    raw_data = data_retrieval.fetch_well_data(supabase, input_lat, input_lon)
-    if raw_data is None:
-        logging.error("Data retrieval failed. Exiting.")
+    well_names = data_retrieval.fetch_well_names(supabase, input_lat, input_lon)
+    if not well_names:
+        logging.error("No wells found within the specified criteria. Exiting.")
         return
 
-    # Stage 3: Semantic Search
-    similar_wells = semantic_search.perform_semantic_search(supabase, raw_data, input_lat, input_lon)
+    # Stage 3: Get Well Profiles
+    well_profiles = data_retrieval.get_well_profiles(well_names, supabase)
+    if not well_profiles:
+        logging.error("Failed to retrieve well profiles. Exiting.")
+        return
 
-    # Stage 4: Data Prioritization
-    prioritized_data = data_prioritazation.prioritize_data(raw_data['closest_wells'], similar_wells)
+    # Stage 4: AI-Driven Insights
+    ai_insight_text = ai_insights.generate_ai_insights(well_profiles)
 
-    # Stage 5: AI-Driven Insights
-    ai_insight_text = ai_insights.generate_ai_insights(prioritized_data)
+    # Stage 5: Report Compilation
+    report = report_compilation.compile_report(well_profiles, ai_insight_text)
 
-    # Stage 6: Report Compilation
-    report = report_compilation.compile_report(raw_data, ai_insight_text)
-
-    # Stage 7: Report Delivery
+    # Stage 6: Report Delivery
     report_delivery.deliver_report(report)
 
     logging.info("Report generation process completed.")

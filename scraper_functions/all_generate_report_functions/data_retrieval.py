@@ -21,70 +21,66 @@ def haversine(lon1, lat1, lon2, lat2):
     distance = R * c
     return distance
 
-def fetch_well_data(supabase, input_lat, input_lon):
+def fetch_well_names(supabase, input_lat, input_lon, max_distance_km=50, max_wells=5):
     """
-    Fetch wells from the database, calculate distances, and retrieve necessary information.
+    Fetch well names within a specified distance from input coordinates.
+    Args:
+        supabase: Supabase client.
+        input_lat (float): Latitude of the input location.
+        input_lon (float): Longitude of the input location.
+        max_distance_km (int): Maximum distance in kilometers.
+        max_wells (int): Maximum number of wells to retrieve.
     Returns:
-        dict: Contains 'well_profiles' and 'closest_wells'.
+        List[str]: List of well names.
     """
     logging.info("Stage 2: Data Retrieval started.")
     try:
         # Fetch wells from 'wellbore_data' table
         response = supabase.table('wellbore_data').select(
-            'wlbwellborename, wlbnsdecdeg, wlbewdecdeg, wlbwelltype, wlbfactpageurl, wlbtotaldepth'
+            'wlbwellborename, wlbnsdecdeg, wlbewdecdeg'
         ).execute()
         all_wells = response.data
         logging.info(f"Fetched {len(all_wells)} wells from 'wellbore_data' table.")
     except Exception as e:
         logging.error(f"Error fetching well data: {e}")
-        return None
+        return []
 
     # Calculate distances and filter valid wells
-    all_well_distances = []
+    valid_wells = []
     for well in all_wells:
         if well['wlbnsdecdeg'] is not None and well['wlbewdecdeg'] is not None:
             try:
                 well_lat = float(well['wlbnsdecdeg'])
                 well_lon = float(well['wlbewdecdeg'])
                 distance = haversine(input_lon, input_lat, well_lon, well_lat)
-                all_well_distances.append({
-                    'well_name': str(well['wlbwellborename']),  # Ensure well_name is a string
-                    'latitude': well_lat,
-                    'longitude': well_lon,
-                    'distance_km': round(distance, 2),
-                    'well_type': well['wlbwelltype'],
-                    'fact_page_url': well.get('wlbfactpageurl', 'N/A'),
-                    'depth_m': well.get('wlbtotaldepth', 'N/A')
-                })
+                if distance <= max_distance_km:
+                    valid_wells.append({
+                        'well_name': str(well['wlbwellborename']),
+                        'distance_km': round(distance, 2)
+                    })
             except Exception as e:
                 logging.warning(f"Error calculating distance for well {well.get('wlbwellborename')}: {e}")
                 continue
-    logging.info(f"Calculated distances for {len(all_well_distances)} wells.")
+    logging.info(f"Found {len(valid_wells)} wells within {max_distance_km} km.")
 
-    # Filter to only EXPLORATION wells
-    exploration_wells = [well for well in all_well_distances if well['well_type'] == 'EXPLORATION']
-    logging.info(f"Found {len(exploration_wells)} exploration wells.")
+    # Sort by distance and limit to max_wells
+    closest_wells = sorted(valid_wells, key=lambda x: x['distance_km'])[:max_wells]
+    logging.info(f"Selected {len(closest_wells)} closest wells.")
 
-    # Sort by distance and get the closest wells (e.g., top 5)
-    closest_exploration_wells = sorted(exploration_wells, key=lambda x: x['distance_km'])[:5]
-    logging.info(f"Selected {len(closest_exploration_wells)} closest exploration wells.")
+    well_names = [well['well_name'] for well in closest_wells]
+    return well_names
 
-    well_names = [well['well_name'] for well in closest_exploration_wells]
-
-    # Fetch well profiles for the selected wells
+def get_well_profiles(well_names, supabase):
+    """
+    Retrieve well profiles using the well_profiler utility.
+    Args:
+        well_names (List[str]): List of well names.
+        supabase: Supabase client.
+    Returns:
+        Dict[str, Dict]: Dictionary of well profiles.
+    """
+    if not well_names:
+        logging.error("No well names provided for profiling.")
+        return {}
     well_profiles = get_well_profiles(well_names, supabase)
-    logging.info(f"Retrieved well profiles for {len(well_profiles)} wells.")
-
-    # Include distance in well profiles
-    for well in closest_exploration_wells:
-        well_name = well['well_name']
-        if well_name in well_profiles:
-            well_profiles[well_name]['distance_km'] = well['distance_km']
-        else:
-            logging.warning(f"Well name '{well_name}' not found in well profiles.")
-
-    logging.info("Stage 2: Data Retrieval completed.")
-    return {
-        'closest_wells': closest_exploration_wells,
-        'well_profiles': well_profiles
-    }
+    return well_profiles
