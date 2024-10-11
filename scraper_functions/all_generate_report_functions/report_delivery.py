@@ -5,7 +5,7 @@ from fpdf import FPDF
 from typing import Dict
 import os
 from datetime import datetime
-from utils import get_supabase_client
+from utils.get_supabase_client import get_supabase_client  # Corrected import
 
 def deliver_report(report: Dict):
     """

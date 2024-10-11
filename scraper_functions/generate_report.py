@@ -12,8 +12,8 @@ from all_generate_report_functions import (
     report_delivery
 )
 
-# Import the supabase client from utils
-from utils import get_supabase_client
+# Correctly import the get_supabase_client function
+from utils.get_supabase_client import get_supabase_client
 
 # ------------------------
 # Configure Logging
