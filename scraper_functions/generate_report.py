@@ -57,14 +57,16 @@ def main():
         return
     input_lat, input_lon = user_input['latitude'], user_input['longitude']
 
-    # Stage 2: Data Retrieval
-    well_names = data_retrieval.fetch_well_names(supabase, input_lat, input_lon)
+    # Stage 2: Data Retrieval with Pagination
+    well_names, distance_map = data_retrieval.fetch_well_names(
+        supabase, input_lat, input_lon, max_distance_km=50, max_wells=5, batch_size=1000
+    )
     if not well_names:
         logging.error("No wells found within the specified criteria. Exiting.")
         return
 
-    # Stage 3: Get Well Profiles
-    well_profiles = data_retrieval.get_well_profiles(well_names, supabase)
+    # Stage 3: Get Well Profiles with Distance
+    well_profiles = data_retrieval.get_well_profiles_with_distance(well_names, distance_map, supabase)
     if not well_profiles:
         logging.error("Failed to retrieve well profiles. Exiting.")
         return

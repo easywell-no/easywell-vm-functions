@@ -22,8 +22,10 @@ def generate_ai_insights(well_profiles):
     logging.info("Stage 4: AI-Driven Insights generation started.")
 
     # Construct the prompt
-    prompt = "You are a geologist tasked with performing a risk analysis for a new well drilling project. " \
-             "Based on the following information from nearby wells, provide a comprehensive risk assessment.\n\n"
+    prompt = (
+        "You are a geologist tasked with performing a risk analysis for a new well drilling project. "
+        "Based on the following information from nearby wells, provide a comprehensive risk assessment.\n\n"
+    )
 
     for well_name, profile in well_profiles.items():
         prompt += f"Well Name: {well_name}\n"

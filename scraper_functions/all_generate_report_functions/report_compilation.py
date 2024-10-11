@@ -15,7 +15,10 @@ def compile_report(well_profiles, ai_insight_text):
 
     report = {
         'title': 'Pre-Well Drilling Report',
-        'summary': 'This report provides a comprehensive analysis of the proposed drilling site, including nearby wells and AI-driven risk assessments.',
+        'summary': (
+            'This report provides a comprehensive analysis of the proposed drilling site, '
+            'including nearby wells and AI-driven risk assessments.'
+        ),
         'wells': well_profiles,
         'ai_insights': ai_insight_text
     }
