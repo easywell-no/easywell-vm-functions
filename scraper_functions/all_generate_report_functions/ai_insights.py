@@ -40,7 +40,8 @@ def generate_ai_insights(well_profiles):
     prompt += "\nProvide a detailed risk analysis for the new well based on the above information."
 
     try:
-        response = openai.chat_completions.create(
+        # Corrected method call
+        response = openai.ChatCompletion.create(
             model="gpt-4o-mini",  # Ensure this model name is correct and accessible
             messages=[
                 {"role": "system", "content": "You are a helpful assistant specialized in geological risk analysis."},
@@ -52,16 +53,7 @@ def generate_ai_insights(well_profiles):
         # Access the response correctly
         ai_insight_text = response.choices[0].message['content'].strip()
         logging.info("AI-driven insights generated successfully.")
-    except openai.InvalidRequestError as e:
-        logging.error(f"OpenAI InvalidRequestError: {e}")
-        ai_insight_text = "Failed to generate AI insights due to an invalid request."
-    except openai.AuthenticationError as e:
-        logging.error(f"OpenAI AuthenticationError: {e}")
-        ai_insight_text = "Failed to generate AI insights due to authentication error."
-    except openai.APIConnectionError as e:
-        logging.error(f"OpenAI APIConnectionError: {e}")
-        ai_insight_text = "Failed to generate AI insights due to a connection error."
-    except openai.OpenAIError as e:
+    except openai.error.OpenAIError as e:  # General exception for OpenAI errors
         logging.error(f"OpenAI Error: {e}")
         ai_insight_text = "Failed to generate AI insights due to an OpenAI error."
     except Exception as e:
