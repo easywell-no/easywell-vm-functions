@@ -7,8 +7,6 @@ def get_well_profiles(well_names, supabase):
     
     # Initialize the well_profiles dictionary with all required keys
     well_profiles = {well_name: {
-        'wellbore_data': None,
-        'general_info': None,
         'wellbore_history': [],
         'lithostratigraphy': [],
         'casing_and_tests': [],
@@ -16,8 +14,6 @@ def get_well_profiles(well_names, supabase):
     } for well_name in well_names}
     
     tables = [
-        ('wellbore_data', 'wellbore_data'),
-        ('general_info', 'general_info'),
         ('wellbore_history', 'wellbore_history'),
         ('lithostratigraphy', 'lithostratigraphy'),
         ('casing_and_tests', 'casing_and_tests'),
