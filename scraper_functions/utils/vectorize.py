@@ -51,7 +51,8 @@ def vectorize_well_profiles(well_profiles, supabase: Client):
             try:
                 response = supabase.table('profiled_wells').upsert(data).execute()
                 logging.debug(f"Upsert response for well '{well_name}': {response}")
-                if response.status_code in [200, 201]:
+
+                if response.error is None:
                     logging.info(f"Stored well profile and embedding for {well_name}.")
                 else:
                     logging.error(f"Error inserting/updating {well_name}: {response.error}")

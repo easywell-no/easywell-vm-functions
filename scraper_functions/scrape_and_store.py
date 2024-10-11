@@ -54,6 +54,7 @@ except Exception as e:
 def main():
     try:
         # Update and store wellbore data
+        # Uncomment if needed
         # update_wellbore_data(supabase)
         logging.info("Wellbore data update completed successfully.")
     except Exception as e:
@@ -61,6 +62,7 @@ def main():
     
     try:
         # Scrape and store factpages
+        # Uncomment if needed
         # scrape_factpages(supabase)
         logging.info("Factpages scraped successfully.")
     except Exception as e:

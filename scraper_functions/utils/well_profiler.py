@@ -36,6 +36,12 @@ def get_well_profiles(well_names, supabase):
         except Exception as e:
             logging.error(f"Error fetching data from '{table_name}': {e}")
             continue
-        
+    
+    # Log wells with incomplete profiles
+    for well_name, profile in well_profiles.items():
+        missing_keys = [key for key in ['lithostratigraphy', 'wellbore_history'] if key not in profile]
+        if missing_keys:
+            logging.warning(f"Well '{well_name}' is missing data from tables: {', '.join(missing_keys)}")
+    
     logging.info("Completed fetching well profiles.")
     return well_profiles
