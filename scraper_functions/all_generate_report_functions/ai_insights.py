@@ -23,33 +23,43 @@ def generate_ai_insights(well_profiles):
 
     # Construct the prompt
     prompt = (
-        "You are an engineer specialized in drilling operations of oil and gas wells. Analyze the following well profiles and provide a comprehensive risk analysis report. "
+        "You are an engineer specialized in drilling operations of oil and gas wells. "
+        "Analyze the following well profiles and provide a comprehensive risk analysis report. "
         "Extract all drilling-related issues, specify the formations where they occurred, and indicate which well they pertain to. "
         "Identify other encountered issues and cite the source information from the provided data using quotes for direct references.\n\n"
-        "This information will be the foundation of a detailed report for a new well in the same area as these wells"
+        "This information will be the foundation of a detailed report for a new well in the same area as these wells.\n\n"
     )
 
     for well_name, profile in well_profiles.items():
-        prompt += f"Well Name: {well_name}\n"
-        prompt += f"Distance: {profile.get('distance_km', 'N/A')} km\n"
-        general_info = profile.get('general_info', {})
-        prompt += f"General Info: {general_info}\n"
+        prompt += f"---\n"
+        prompt += f"**Well Name**: {well_name}\n"
+        prompt += f"**Distance**: {profile.get('distance_km', 'N/A')} km\n"
+
+        general_info = profile.get('general_info') or {}
+        prompt += f"**General Info**: {general_info}\n"
+
         wellbore_history = profile.get('wellbore_history', [])
+        prompt += f"**Wellbore History**:\n"
         for history in wellbore_history:
-            prompt += f"Wellbore History: {history.get('content', 'N/A')}\n"
+            content = history.get('content', 'N/A').replace('\n', ' ')
+            prompt += f"  - {content}\n"
+
         lithostratigraphy = profile.get('lithostratigraphy', [])
-        prompt += "Lithostratigraphy:\n"
+        prompt += f"**Lithostratigraphy**:\n"
         for litho in lithostratigraphy:
-            prompt += f"  - {litho.get('lithostratigraphic_unit', 'N/A')} at {litho.get('top_depth_m_md_rkb', 'N/A')} m\n"
+            unit = litho.get('lithostratigraphic_unit', 'N/A')
+            depth = litho.get('top_depth_m_md_rkb', 'N/A')
+            prompt += f"  - {unit} at {depth} m\n"
+
         casing_and_tests = profile.get('casing_and_tests', [])
-        prompt += "Casing and Tests:\n"
+        prompt += f"**Casing and Tests**:\n"
         for casing in casing_and_tests:
-            prompt += f"  - {casing}\n"  # Depending on detail needed
+            prompt += f"  - {casing}\n"  # You can format this further if needed
+
         drilling_fluid = profile.get('drilling_fluid', [])
-        prompt += "Drilling Fluid:\n"
+        prompt += f"**Drilling Fluid**:\n"
         for fluid in drilling_fluid:
             prompt += f"  - {fluid}\n"
-        prompt += "---\n"
 
     prompt += (
         "\nBased on the above information, provide a detailed risk analysis for the new well. "
@@ -57,14 +67,14 @@ def generate_ai_insights(well_profiles):
     )
 
     try:
-        # Corrected model name if needed, assuming 'gpt-4' is available
+        # Use the correct model name
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",  # Ensure this model name is correct and accessible
             messages=[
                 {"role": "system", "content": "You are a helpful assistant specialized in geological risk analysis."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=20000,  # Increased token limit for more detailed response
+            max_tokens=16384,  # Adjusted to fit within model limits
             temperature=0.2,
         )
         # Access the response correctly
