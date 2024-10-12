@@ -23,31 +23,48 @@ def generate_ai_insights(well_profiles):
 
     # Construct the prompt
     prompt = (
-        "You are a geologist tasked with performing a risk analysis for a new well drilling project. "
-        "Based on the following information from nearby wells, provide a comprehensive risk assessment.\n\n"
+        "You are an engineer specialized in drilling operations of oil and gas wells. Analyze the following well profiles and provide a comprehensive risk analysis report. "
+        "Extract all drilling-related issues, specify the formations where they occurred, and indicate which well they pertain to. "
+        "Identify other encountered issues and cite the source information from the provided data using quotes for direct references.\n\n"
+        "This information will be the foundation of a detailed report for a new well in the same area as these wells"
     )
 
     for well_name, profile in well_profiles.items():
         prompt += f"Well Name: {well_name}\n"
         prompt += f"Distance: {profile.get('distance_km', 'N/A')} km\n"
-        prompt += f"General Info: {profile.get('general_info', 'N/A')}\n"
-        prompt += f"Wellbore History: {profile.get('wellbore_history', 'N/A')}\n"
-        prompt += f"Lithostratigraphy: {profile.get('lithostratigraphy', 'N/A')}\n"
-        prompt += f"Casing and Tests: {profile.get('casing_and_tests', 'N/A')}\n"
-        prompt += f"Drilling Fluid: {profile.get('drilling_fluid', 'N/A')}\n"
+        general_info = profile.get('general_info', {})
+        prompt += f"General Info: {general_info}\n"
+        wellbore_history = profile.get('wellbore_history', [])
+        for history in wellbore_history:
+            prompt += f"Wellbore History: {history.get('content', 'N/A')}\n"
+        lithostratigraphy = profile.get('lithostratigraphy', [])
+        prompt += "Lithostratigraphy:\n"
+        for litho in lithostratigraphy:
+            prompt += f"  - {litho.get('lithostratigraphic_unit', 'N/A')} at {litho.get('top_depth_m_md_rkb', 'N/A')} m\n"
+        casing_and_tests = profile.get('casing_and_tests', [])
+        prompt += "Casing and Tests:\n"
+        for casing in casing_and_tests:
+            prompt += f"  - {casing}\n"  # Depending on detail needed
+        drilling_fluid = profile.get('drilling_fluid', [])
+        prompt += "Drilling Fluid:\n"
+        for fluid in drilling_fluid:
+            prompt += f"  - {fluid}\n"
         prompt += "---\n"
 
-    prompt += "\nProvide a detailed risk analysis for the new well based on the above information."
+    prompt += (
+        "\nBased on the above information, provide a detailed risk analysis for the new well. "
+        "For each identified issue, specify the formation, the well it pertains to, and include quotes from the raw data as references."
+    )
 
     try:
-        # Corrected method call
+        # Corrected model name if needed, assuming 'gpt-4' is available
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",  # Ensure this model name is correct and accessible
+            model="gpt-4",  # Ensure this model name is correct and accessible
             messages=[
                 {"role": "system", "content": "You are a helpful assistant specialized in geological risk analysis."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=1000,
+            max_tokens=2000,  # Increased token limit for more detailed response
             temperature=0.7,
         )
         # Access the response correctly
