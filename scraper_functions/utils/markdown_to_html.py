@@ -13,7 +13,7 @@ def convert_markdown_to_html(markdown_content: str) -> str:
     """
     try:
         # Enable extensions for better markdown features
-        html_content = markdown.markdown(markdown_content, extensions=['fenced_code', 'tables'])
+        html_content = markdown.markdown(markdown_content, extensions=['fenced_code', 'tables', 'nl2br'])
         logging.info("Markdown successfully converted to HTML.")
         return html_content
     except Exception as e:

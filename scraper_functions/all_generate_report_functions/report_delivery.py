@@ -1,7 +1,7 @@
 # all_generate_report_functions/report_delivery.py
 
 import logging
-from typing import Dict  # Added import
+from typing import Dict  # Ensures Dict is imported
 import os
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -32,12 +32,12 @@ def deliver_report(report: Dict):
     # Convert AI-driven insights from markdown to HTML
     ai_insights_html = convert_markdown_to_html(report.get('ai_insights', 'No insights provided.'))
 
-    # Prepare transformed wells data (as done previously)
+    # Prepare transformed wells data
     transformed_wells = {}
     for well_name, profile in report.get('wells', {}).items():
         transformed_profile = {
             'distance_km': profile.get('distance_km', 'N/A'),
-            'general_info': [],
+            'general_info': {},
             'wellbore_history': [],
             'lithostratigraphy': [],
             'casing_and_tests': [],
@@ -46,8 +46,7 @@ def deliver_report(report: Dict):
 
         # General Info
         general_info = profile.get('general_info') or {}
-        for key, value in general_info.items():
-            transformed_profile['general_info'].append(f"{key}: {value}")
+        transformed_profile['general_info'] = general_info
 
         # Wellbore History
         wellbore_history = profile.get('wellbore_history', [])
@@ -65,14 +64,12 @@ def deliver_report(report: Dict):
         # Casing and Tests
         casing_and_tests = profile.get('casing_and_tests', [])
         for casing in casing_and_tests:
-            # Format casing information as needed
             casing_info = ", ".join([f"{k}: {v}" for k, v in casing.items() if k != 'wlbwellborename'])
             transformed_profile['casing_and_tests'].append(casing_info)
 
         # Drilling Fluid
         drilling_fluid = profile.get('drilling_fluid', [])
         for fluid in drilling_fluid:
-            # Format drilling fluid information as needed
             fluid_info = ", ".join([f"{k}: {v}" for k, v in fluid.items() if k != 'wlbwellborename'])
             transformed_profile['drilling_fluid'].append(fluid_info)
 

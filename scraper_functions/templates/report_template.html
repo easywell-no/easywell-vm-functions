@@ -74,7 +74,11 @@
                 </tr>
                 <tr>
                     <td>General Info</td>
-                    <td>{{ profile.general_info | join(", ") }}</td>
+                    <td>
+                        {% for key, value in profile.general_info.items() %}
+                            <strong>{{ key }}:</strong> {{ value }}<br>
+                        {% endfor %}
+                    </td>
                 </tr>
                 <tr>
                     <td>Wellbore History</td>
@@ -112,7 +116,7 @@
             {% for well_name, profile in wells.items() %}
                 <tr>
                     <td>{{ well_name }}</td>
-                    <td>{{ profile.general_info | selectattr('starts_with', 'totalt_maalt_dybde_md_m_rkb') | map(attribute='split(": ")[1]) | first | default('N/A') }}</td>
+                    <td>{{ profile.general_info.get('totalt_maalt_dybde_md_m_rkb', 'N/A') }}</td>
                     <td>{{ profile.casing_and_tests | length }}</td>
                 </tr>
             {% endfor %}
