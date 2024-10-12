@@ -1,3 +1,5 @@
+# utils/markdown_to_html.py
+
 import markdown
 import logging
 
@@ -10,7 +12,8 @@ def convert_markdown_to_html(markdown_content: str) -> str:
         str: The converted HTML content.
     """
     try:
-        html_content = markdown.markdown(markdown_content)
+        # Enable extensions for better markdown features
+        html_content = markdown.markdown(markdown_content, extensions=['fenced_code', 'tables'])
         logging.info("Markdown successfully converted to HTML.")
         return html_content
     except Exception as e:

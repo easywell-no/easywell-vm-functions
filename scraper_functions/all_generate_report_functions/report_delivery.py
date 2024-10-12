@@ -1,3 +1,12 @@
+# all_generate_report_functions/report_delivery.py
+
+import logging
+from typing import Dict  # Added import
+import os
+from datetime import datetime
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+from weasyprint import HTML
+from utils.get_supabase_client import get_supabase_client
 from utils.markdown_to_html import convert_markdown_to_html
 
 def deliver_report(report: Dict):
@@ -56,12 +65,14 @@ def deliver_report(report: Dict):
         # Casing and Tests
         casing_and_tests = profile.get('casing_and_tests', [])
         for casing in casing_and_tests:
+            # Format casing information as needed
             casing_info = ", ".join([f"{k}: {v}" for k, v in casing.items() if k != 'wlbwellborename'])
             transformed_profile['casing_and_tests'].append(casing_info)
 
         # Drilling Fluid
         drilling_fluid = profile.get('drilling_fluid', [])
         for fluid in drilling_fluid:
+            # Format drilling fluid information as needed
             fluid_info = ", ".join([f"{k}: {v}" for k, v in fluid.items() if k != 'wlbwellborename'])
             transformed_profile['drilling_fluid'].append(fluid_info)
 
@@ -109,6 +120,7 @@ def deliver_report(report: Dict):
         with open(pdf_filename, 'rb') as file:
             response = supabase.storage.from_(bucket_name).upload(file_path, file, {'content-type': 'application/pdf'})
 
+        # Enhanced error logging
         if hasattr(response, 'status_code') and response.status_code in [200, 201]:
             logging.info(f"PDF report '{pdf_filename}' uploaded to Supabase bucket '{bucket_name}'.")
         elif hasattr(response, 'error') and response.error:

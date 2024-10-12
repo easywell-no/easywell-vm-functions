@@ -12,7 +12,7 @@
             color: #333333;
             line-height: 1.6;
         }
-        h1, h2, h3 {
+        h1, h2, h3, h4 {
             color: #2F4F4F;
         }
         .summary {
@@ -41,6 +41,7 @@
             background-color: #f9f9f9;
             padding: 15px;
             border-left: 5px solid #FF6347;
+            margin-bottom: 30px;
         }
         .footer {
             position: fixed;
@@ -95,9 +96,9 @@
         </div>
     {% endfor %}
 
-    <div class="risk-analysis">
+    <div class="risk-analysis" id="risk-analysis">
         <h2>AI-Driven Risk Analysis</h2>
-        <p>{{ ai_insights }}</p>
+        <div>{{ ai_insights | safe }}</div>
     </div>
 
     {% if wells | length > 1 %}
@@ -111,7 +112,7 @@
             {% for well_name, profile in wells.items() %}
                 <tr>
                     <td>{{ well_name }}</td>
-                    <td>{{ profile.general_info.totalt_maalt_dybde_md_m_rkb }}</td>
+                    <td>{{ profile.general_info | selectattr('starts_with', 'totalt_maalt_dybde_md_m_rkb') | map(attribute='split(": ")[1]) | first | default('N/A') }}</td>
                     <td>{{ profile.casing_and_tests | length }}</td>
                 </tr>
             {% endfor %}
