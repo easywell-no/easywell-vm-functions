@@ -51,34 +51,34 @@ def main():
         return
 
     # Stage 1: Receive Input Coordinates
-    user_input = input_handler.get_user_input()
+    #user_input = input_handler.get_user_input()
     if user_input is None:
         logging.error("No valid input received. Exiting.")
         return
     input_lat, input_lon = user_input['latitude'], user_input['longitude']
 
     # Stage 2: Data Retrieval with Pagination
-    well_names, distance_map = data_retrieval.fetch_well_names(
-        supabase, input_lat, input_lon, max_distance_km=50, max_wells=5, batch_size=1000
-    )
+    #well_names, distance_map = data_retrieval.fetch_well_names(
+    #     supabase, input_lat, input_lon, max_distance_km=50, max_wells=5, batch_size=1000
+    #)
     if not well_names:
         logging.error("No wells found within the specified criteria. Exiting.")
         return
 
     # Stage 3: Get Well Profiles with Distance
-    well_profiles = data_retrieval.get_well_profiles_with_distance(well_names, distance_map, supabase)
+    #well_profiles = data_retrieval.get_well_profiles_with_distance(well_names, distance_map, supabase)
     if not well_profiles:
         logging.error("Failed to retrieve well profiles. Exiting.")
         return
 
     # Stage 4: AI-Driven Insights
-    ai_insight_text = ai_insights.generate_ai_insights(well_profiles)
+    #ai_insight_text = ai_insights.generate_ai_insights(well_profiles)
     if not ai_insight_text:
         logging.error("Failed to generate AI insights. Exiting.")
         return
 
     # Stage 5: Report Compilation
-    report = report_compilation.compile_report(well_profiles, ai_insight_text)
+    #report = report_compilation.compile_report(well_profiles, ai_insight_text)
     if not report:
         logging.error("Failed to compile the report. Exiting.")
         return
