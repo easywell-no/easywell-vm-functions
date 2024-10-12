@@ -1,155 +1,112 @@
 # all_generate_report_functions/report_delivery.py
 
 import logging
-from fpdf import FPDF
 from typing import Dict
 import os
 from datetime import datetime
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+from weasyprint import HTML
 from utils.get_supabase_client import get_supabase_client
-
-class PDFReport(FPDF):
-    def header(self):
-        # Arial bold 15
-        self.set_font('Arial', 'B', 15)
-        # Calculate width of title and position
-        title = self.title
-        w = self.get_string_width(title) + 6
-        self.set_x((210 - w) / 2)
-        # Colors of frame, background, and text
-        self.set_draw_color(0, 0, 0)
-        self.set_fill_color(230, 230, 0)
-        self.set_text_color(0, 0, 0)
-        # Thickness of frame (1 mm)
-        self.set_line_width(1)
-        # Title
-        self.cell(w, 9, title, 1, 1, 'C', 1)
-        # Line break
-        self.ln(10)
-
-    def footer(self):
-        # Position at 1.5 cm from bottom
-        self.set_y(-15)
-        # Arial italic 8
-        self.set_font('Arial', 'I', 8)
-        # Text color in gray
-        self.set_text_color(128)
-        # Page number
-        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
-
-    def chapter_title(self, label):
-        # Arial 12
-        self.set_font('Arial', 'B', 12)
-        # Background color
-        self.set_fill_color(200, 220, 255)
-        # Title
-        self.cell(0, 10, label, 0, 1, 'L', 1)
-        # Line break
-        self.ln(2)
-
-    def chapter_body(self, text):
-        # Read text file
-        self.set_font('Arial', '', 12)
-        # Output justified text
-        self.multi_cell(0, 10, text)
-        # Line break
-        self.ln()
-
-    def add_table(self, data, col_widths, headers=None):
-        self.set_font('Arial', 'B', 12)
-        if headers:
-            for i, header in enumerate(headers):
-                self.cell(col_widths[i], 10, header, 1, 0, 'C')
-            self.ln()
-        self.set_font('Arial', '', 12)
-        for row in data:
-            for i, item in enumerate(row):
-                # Truncate the item if it's too long to fit
-                item_str = str(item)
-                if len(item_str) > 50:
-                    item_str = item_str[:47] + '...'
-                self.cell(col_widths[i], 10, item_str, 1, 0, 'C')
-            self.ln()
 
 def deliver_report(report: Dict):
     """
-    Generate a PDF report and upload it to Supabase storage.
+    Generate a PDF report from HTML template and upload it to Supabase storage.
     Args:
         report (Dict): Compiled report content.
     """
     logging.info("Stage 6: Report Delivery started.")
 
-    # Generate PDF
-    pdf = PDFReport()
-    pdf.title = report.get('title', 'Report')
-    pdf.add_page()
+    # Setup Jinja2 Environment
+    env = Environment(
+        loader=FileSystemLoader(searchpath="templates"),
+        autoescape=select_autoescape(['html', 'xml'])
+    )
 
-    # Summary
-    pdf.chapter_title("Summary")
-    pdf.chapter_body(report.get('summary', 'No summary provided.'))
+    try:
+        template = env.get_template("report_template.html")
+    except Exception as e:
+        logging.error(f"Failed to load HTML template: {e}")
+        return
 
-    # Wells Information
-    pdf.chapter_title("Nearby Wells")
-
+    # Prepare data for the template
+    # Transform well profiles for easier template rendering
+    transformed_wells = {}
     for well_name, profile in report.get('wells', {}).items():
-        pdf.set_font("Arial", 'B', 12)
-        pdf.cell(0, 10, f"Well Name: {well_name}", ln=True)
-        pdf.set_font("Arial", '', 12)
-        # Create a table for key well information
-        headers = ["Field", "Value"]
-        data = [
-            ["Distance (km)", profile.get('distance_km', 'N/A')],
-            ["General Info", profile.get('general_info', {})],
-            ["Wellbore History", "\n".join([h.get('content', '').replace('\n', ' ') for h in profile.get('wellbore_history', [])])],
-            ["Lithostratigraphy", "\n".join([f"{l.get('lithostratigraphic_unit', '')} at {l.get('top_depth_m_md_rkb', '')} m" for l in profile.get('lithostratigraphy', [])])],
-            ["Casing and Tests", "\n".join([str(c) for c in profile.get('casing_and_tests', [])])],
-            ["Drilling Fluid", "\n".join([str(f) for f in profile.get('drilling_fluid', [])])]
-        ]
-        # Display in key-value pairs
-        for field, value in data:
-            pdf.set_font("Arial", 'B', 11)
-            pdf.cell(40, 10, f"{field}:", 1)
-            pdf.set_font("Arial", '', 11)
-            # If value is a dict, convert to string
-            if isinstance(value, dict):
-                # Convert dict to a readable string
-                value_str = ', '.join([f"{k}: {v}" for k, v in value.items()])
-            elif isinstance(value, list):
-                # Join list items with newlines
-                value_str = value
-                value_str = '\n'.join(map(str, value))
-            else:
-                value_str = str(value)
-            # Handle long text by setting cell width or using multi_cell
-            # Here, we'll use multi_cell for better formatting
-            pdf.multi_cell(0, 10, value_str, border=1)
-        pdf.ln(5)
+        transformed_profile = {
+            'distance_km': profile.get('distance_km', 'N/A'),
+            'general_info': [],
+            'wellbore_history': [],
+            'lithostratigraphy': [],
+            'casing_and_tests': [],
+            'drilling_fluid': []
+        }
 
-    # AI Insights
-    pdf.chapter_title("AI-Driven Risk Analysis")
-    pdf.chapter_body(report.get('ai_insights', 'No insights provided.'))
+        # General Info
+        general_info = profile.get('general_info') or {}
+        for key, value in general_info.items():
+            transformed_profile['general_info'].append(f"{key}: {value}")
 
-    # Optionally, add tables comparing raw data of wells
-    # For example, comparing casing diameters across wells
-    # Assuming multiple wells, but in current case, max 5
+        # Wellbore History
+        wellbore_history = profile.get('wellbore_history', [])
+        for history in wellbore_history:
+            content = history.get('content', 'N/A').replace('\n', ' ')
+            transformed_profile['wellbore_history'].append(content)
 
-    if len(report.get('wells', {})) > 1:
-        pdf.chapter_title("Comparison of Well Data")
-        # Example table: Well Name, Total Depth, Number of Casing Layers
-        headers = ["Well Name", "Total Depth (m)", "Number of Casing Layers"]
-        data = []
-        for well_name, profile in report.get('wells', {}).items():
-            general_info = profile.get('general_info') or {}
-            total_depth = general_info.get('totalt_maalt_dybde_md_m_rkb', 'N/A')
-            num_casings = len(profile.get('casing_and_tests', []))
-            data.append([well_name, total_depth, num_casings])
-        col_widths = [60, 60, 60]
-        pdf.add_table(data, col_widths, headers)
+        # Lithostratigraphy
+        lithostratigraphy = profile.get('lithostratigraphy', [])
+        for litho in lithostratigraphy:
+            unit = litho.get('lithostratigraphic_unit', 'N/A')
+            depth = litho.get('top_depth_m_md_rkb', 'N/A')
+            transformed_profile['lithostratigraphy'].append(f"{unit} at {depth} m")
+
+        # Casing and Tests
+        casing_and_tests = profile.get('casing_and_tests', [])
+        for casing in casing_and_tests:
+            # Format casing information as needed
+            casing_info = ", ".join([f"{k}: {v}" for k, v in casing.items() if k != 'wlbwellborename'])
+            transformed_profile['casing_and_tests'].append(casing_info)
+
+        # Drilling Fluid
+        drilling_fluid = profile.get('drilling_fluid', [])
+        for fluid in drilling_fluid:
+            # Format drilling fluid information as needed
+            fluid_info = ", ".join([f"{k}: {v}" for k, v in fluid.items() if k != 'wlbwellborename'])
+            transformed_profile['drilling_fluid'].append(fluid_info)
+
+        transformed_wells[well_name] = transformed_profile
+
+    # Render the HTML content using the template
+    try:
+        rendered_html = template.render(
+            title=report.get('title', 'Pre-Well Drilling Report'),
+            summary=report.get('summary', 'This report provides a comprehensive analysis of the proposed drilling site, including nearby wells and AI-driven risk assessments.'),
+            wells=transformed_wells,
+            ai_insights=report.get('ai_insights', 'No insights provided.'),
+            generation_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        )
+        logging.info("HTML content rendered successfully.")
+    except Exception as e:
+        logging.error(f"Failed to render HTML template: {e}")
+        return
+
+    # Convert HTML to PDF using WeasyPrint
+    try:
+        pdf = HTML(string=rendered_html).write_pdf()
+        logging.info("HTML converted to PDF successfully.")
+    except Exception as e:
+        logging.error(f"Failed to convert HTML to PDF: {e}")
+        return
 
     # Save PDF to a temporary file
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     pdf_filename = f"pre_well_report_{timestamp}.pdf"
-    pdf.output(pdf_filename)
-    logging.info(f"PDF report '{pdf_filename}' generated successfully.")
+    try:
+        with open(pdf_filename, "wb") as f:
+            f.write(pdf)
+        logging.info(f"PDF report '{pdf_filename}' saved locally.")
+    except Exception as e:
+        logging.error(f"Failed to save PDF file: {e}")
+        return
 
     # Upload PDF to Supabase Storage
     try:

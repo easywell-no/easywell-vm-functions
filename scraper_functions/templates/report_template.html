@@ -1,0 +1,126 @@
+<!-- templates/report_template.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            color: #333333;
+            line-height: 1.6;
+        }
+        h1, h2, h3 {
+            color: #2F4F4F;
+        }
+        .summary {
+            margin-bottom: 20px;
+        }
+        .well-section {
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        table, th, td {
+            border: 1px solid #dddddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            font-size: 10pt;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .risk-analysis {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-left: 5px solid #FF6347;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            text-align: center;
+            font-size: 8pt;
+            color: #777777;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>{{ title }}</h1>
+    <p class="summary">{{ summary }}</p>
+
+    {% for well_name, profile in wells.items() %}
+        <div class="well-section">
+            <h2>Well Name: {{ well_name }}</h2>
+            <table>
+                <tr>
+                    <th>Field</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>Distance (km)</td>
+                    <td>{{ profile.distance_km }}</td>
+                </tr>
+                <tr>
+                    <td>General Info</td>
+                    <td>{{ profile.general_info | join(", ") }}</td>
+                </tr>
+                <tr>
+                    <td>Wellbore History</td>
+                    <td>{{ profile.wellbore_history | join("<br>") | safe }}</td>
+                </tr>
+                <tr>
+                    <td>Lithostratigraphy</td>
+                    <td>{{ profile.lithostratigraphy | join("<br>") | safe }}</td>
+                </tr>
+                <tr>
+                    <td>Casing and Tests</td>
+                    <td>{{ profile.casing_and_tests | join("<br>") | safe }}</td>
+                </tr>
+                <tr>
+                    <td>Drilling Fluid</td>
+                    <td>{{ profile.drilling_fluid | join("<br>") | safe }}</td>
+                </tr>
+            </table>
+        </div>
+    {% endfor %}
+
+    <div class="risk-analysis">
+        <h2>AI-Driven Risk Analysis</h2>
+        <p>{{ ai_insights }}</p>
+    </div>
+
+    {% if wells | length > 1 %}
+        <h2>Comparison of Well Data</h2>
+        <table>
+            <tr>
+                <th>Well Name</th>
+                <th>Total Depth (m)</th>
+                <th>Number of Casing Layers</th>
+            </tr>
+            {% for well_name, profile in wells.items() %}
+                <tr>
+                    <td>{{ well_name }}</td>
+                    <td>{{ profile.general_info.totalt_maalt_dybde_md_m_rkb }}</td>
+                    <td>{{ profile.casing_and_tests | length }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+
+    <div class="footer">
+        Report generated on {{ generation_date }}
+    </div>
+
+</body>
+</html>

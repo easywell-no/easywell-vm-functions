@@ -8,3 +8,5 @@ requests
 psutil
 openAI
 fpdf
+Jinja2
+WeasyPrint
