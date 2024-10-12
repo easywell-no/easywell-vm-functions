@@ -63,7 +63,11 @@ class PDFReport(FPDF):
         self.set_font('Arial', '', 12)
         for row in data:
             for i, item in enumerate(row):
-                self.cell(col_widths[i], 10, str(item), 1, 0, 'C')
+                # Truncate the item if it's too long to fit
+                item_str = str(item)
+                if len(item_str) > 50:
+                    item_str = item_str[:47] + '...'
+                self.cell(col_widths[i], 10, item_str, 1, 0, 'C')
             self.ln()
 
 def deliver_report(report: Dict):
@@ -95,12 +99,11 @@ def deliver_report(report: Dict):
         data = [
             ["Distance (km)", profile.get('distance_km', 'N/A')],
             ["General Info", profile.get('general_info', {})],
-            ["Wellbore History", "\n".join([h.get('content', '') for h in profile.get('wellbore_history', [])])],
+            ["Wellbore History", "\n".join([h.get('content', '').replace('\n', ' ') for h in profile.get('wellbore_history', [])])],
             ["Lithostratigraphy", "\n".join([f"{l.get('lithostratigraphic_unit', '')} at {l.get('top_depth_m_md_rkb', '')} m" for l in profile.get('lithostratigraphy', [])])],
             ["Casing and Tests", "\n".join([str(c) for c in profile.get('casing_and_tests', [])])],
             ["Drilling Fluid", "\n".join([str(f) for f in profile.get('drilling_fluid', [])])]
         ]
-        # For simplicity, only display key fields; can be customized further
         # Display in key-value pairs
         for field, value in data:
             pdf.set_font("Arial", 'B', 11)
@@ -108,14 +111,16 @@ def deliver_report(report: Dict):
             pdf.set_font("Arial", '', 11)
             # If value is a dict, convert to string
             if isinstance(value, dict):
+                # Convert dict to a readable string
                 value_str = ', '.join([f"{k}: {v}" for k, v in value.items()])
             elif isinstance(value, list):
+                # Join list items with newlines
                 value_str = value
-                # For better formatting, might need to handle lists differently
                 value_str = '\n'.join(map(str, value))
             else:
                 value_str = str(value)
-            # Wrap text in cell
+            # Handle long text by setting cell width or using multi_cell
+            # Here, we'll use multi_cell for better formatting
             pdf.multi_cell(0, 10, value_str, border=1)
         pdf.ln(5)
 
@@ -133,7 +138,8 @@ def deliver_report(report: Dict):
         headers = ["Well Name", "Total Depth (m)", "Number of Casing Layers"]
         data = []
         for well_name, profile in report.get('wells', {}).items():
-            total_depth = profile.get('general_info', {}).get('totalt_maalt_dybde_md_m_rkb', 'N/A')
+            general_info = profile.get('general_info') or {}
+            total_depth = general_info.get('totalt_maalt_dybde_md_m_rkb', 'N/A')
             num_casings = len(profile.get('casing_and_tests', []))
             data.append([well_name, total_depth, num_casings])
         col_widths = [60, 60, 60]
@@ -156,11 +162,13 @@ def deliver_report(report: Dict):
             response = supabase.storage.from_(bucket_name).upload(file_path, file, {'content-type': 'application/pdf'})
 
         # Enhanced error logging
-        if response.status_code in [200, 201]:
+        if hasattr(response, 'status_code') and response.status_code in [200, 201]:
             logging.info(f"PDF report '{pdf_filename}' uploaded to Supabase bucket '{bucket_name}'.")
+        elif hasattr(response, 'error') and response.error:
+            logging.error(f"Failed to upload PDF report to Supabase: {response.error}")
+            return
         else:
-            logging.error(f"Failed to upload PDF report to Supabase. Status code: {response.status_code}")
-            logging.error(f"Response: {response.content}")
+            logging.error(f"Failed to upload PDF report to Supabase. Response: {response}")
             return
 
         # Optionally, get the public URL
