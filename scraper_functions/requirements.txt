@@ -10,3 +10,4 @@ openAI
 fpdf
 Jinja2
 WeasyPrint
+markdown

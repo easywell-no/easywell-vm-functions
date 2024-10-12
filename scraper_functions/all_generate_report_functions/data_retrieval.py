@@ -30,7 +30,7 @@ def haversine(lon1, lat1, lon2, lat2):
     distance = R * c
     return distance
 
-def fetch_well_names(supabase, input_lat, input_lon, max_distance_km=50, max_wells=5, batch_size=1000):
+def fetch_well_names(supabase, input_lat, input_lon, max_distance_km=50, max_wells=3, batch_size=1000):
     """
     Fetch well names within a specified distance from input coordinates.
     Implements pagination to fetch all wells in the database.
@@ -40,7 +40,7 @@ def fetch_well_names(supabase, input_lat, input_lon, max_distance_km=50, max_wel
         input_lat (float): Latitude of the input location.
         input_lon (float): Longitude of the input location.
         max_distance_km (int, optional): Maximum distance in kilometers. Defaults to 50.
-        max_wells (int, optional): Maximum number of wells to retrieve. Defaults to 5.
+        max_wells (int, optional): Maximum number of wells to retrieve. Defaults to 3.
         batch_size (int, optional): Number of wells to fetch per request. Defaults to 1000.
     
     Returns:
