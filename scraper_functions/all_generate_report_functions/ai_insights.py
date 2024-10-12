@@ -59,13 +59,13 @@ def generate_ai_insights(well_profiles):
     try:
         # Corrected model name if needed, assuming 'gpt-4' is available
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # Ensure this model name is correct and accessible
+            model="gpt-4o-mini",  # Ensure this model name is correct and accessible
             messages=[
                 {"role": "system", "content": "You are a helpful assistant specialized in geological risk analysis."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=2000,  # Increased token limit for more detailed response
-            temperature=0.7,
+            max_tokens=20000,  # Increased token limit for more detailed response
+            temperature=0.2,
         )
         # Access the response correctly
         ai_insight_text = response.choices[0].message['content'].strip()
