@@ -141,7 +141,12 @@ def prepare_data(df, table_name):
         integer_columns = ['lsunpdidlithostrat', 'lsunpdidlithostratparent', 'wlbnpdidwellbore']
         for col in integer_columns:
             if col in df.columns:
-                df[col] = df[col].apply(lambda x: int(float(x)) if pd.notnull(x) else None)
+                df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+        # Ensure 'lsutopdepth' and 'lsubottomdepth' are numeric
+        float_columns = ['lsutopdepth', 'lsubottomdepth']
+        for col in float_columns:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
         # Filter out rows where required columns are null
         df = df.dropna(subset=['lsutopdepth', 'lsuname'])
     if table_name == 'well_mud':
@@ -154,8 +159,8 @@ def prepare_data(df, table_name):
             df = df.drop_duplicates(subset=required_columns)
         # Filter out rows where required columns are null
         df = df.dropna(subset=['wlbwellborename', 'wlbmd', 'wlbmuddatemeasured'])
-    # Replace NaN and NaT with None
-    df = df.astype(object).where(pd.notnull(df), None)
+    # Replace pd.NA and pd.NaT with None
+    df = df.replace({pd.NA: None, pd.NaT: None})
     return df
 
 def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFrame):
