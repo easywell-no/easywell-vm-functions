@@ -7,6 +7,7 @@ import io
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from logging.handlers import RotatingFileHandler
+from dateutil import parser
 
 # Adjust sys.path to include utils directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,7 +22,7 @@ env_path = os.path.join(parent_dir, '.env')
 load_dotenv(dotenv_path=env_path)
 
 # Create log directory if it doesn't exist
-log_dir = os.path.join(parent_dir, "logs")  # Updated to ensure logs are in the correct directory
+log_dir = os.path.join(parent_dir, "logs")  # Ensure logs are in the correct directory
 os.makedirs(log_dir, exist_ok=True)
 
 # Configure logging for scrape_and_store.py
@@ -57,16 +58,19 @@ except Exception as e:
     logging.error(f"Failed to create Supabase client: {e}", exc_info=True)
     sys.exit(1)
 
-def fetch_csv(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        content = response.content.decode('utf-8')
-        df = pd.read_csv(io.StringIO(content), encoding='utf-8', on_bad_lines='skip')
-        return df
-    except Exception as e:
-        logging.error(f"Error fetching CSV from {url}: {e}", exc_info=True)
-        return None
+def parse_date_column(series):
+    parsed_dates = []
+    for date_str in series:
+        try:
+            if pd.isnull(date_str):
+                parsed_dates.append(None)
+            else:
+                parsed_date = parser.parse(str(date_str), dayfirst=False)
+                parsed_dates.append(parsed_date.strftime('%Y-%m-%d'))
+        except Exception as e:
+            logging.error(f"Error parsing date '{date_str}': {e}")
+            parsed_dates.append(None)
+    return pd.Series(parsed_dates)
 
 def prepare_data(df):
     # Replace empty strings and whitespace-only strings with NaN
@@ -76,13 +80,21 @@ def prepare_data(df):
     # Rename 'wlbname' to 'wlbwellborename' if it exists
     if 'wlbname' in df.columns:
         df = df.rename(columns={'wlbname': 'wlbwellborename'})
+    # Identify date columns
+    date_columns = [col for col in df.columns if 'date' in col.lower()]
+    for date_col in date_columns:
+        try:
+            df[date_col] = parse_date_column(df[date_col])
+        except Exception as e:
+            logging.error(f"Error parsing date column '{date_col}': {e}", exc_info=True)
+    # Replace NaN and NaT with None
+    df = df.astype(object).where(pd.notnull(df), None)
     return df
 
 def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFrame):
     try:
         # Delete all existing data in the table using wlbwellborename
         supabase.table(table_name).delete().neq('wlbwellborename', '').execute()
-
         # Insert new data in chunks
         data = df.to_dict(orient='records')
         chunk_size = 500  # Adjust chunk size if necessary
