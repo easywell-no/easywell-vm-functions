@@ -170,27 +170,27 @@
     <div class="table-of-contents">
         <ul class="toc-1">
             <li><a href="#executive-summary">Executive Summary</a>
-                <span class="toc-page-number">{{ toc_page_numbers['executive-summary'] }}</span>
+                <span class="toc-page-number">{{ toc_page_numbers.get('executive-summary', '') }}</span>
             </li>
             <li><a href="#ai-analysis">AI-Driven Pre-Well Analysis Report</a>
-                <span class="toc-page-number">{{ toc_page_numbers['ai-analysis'] }}</span>
+                <span class="toc-page-number">{{ toc_page_numbers.get('ai-analysis', '') }}</span>
             </li>
             <li><a href="#nearby-wells">Nearby Wells</a>
-                <span class="toc-page-number">{{ toc_page_numbers['nearby-wells'] }}</span>
+                <span class="toc-page-number">{{ toc_page_numbers.get('nearby-wells', '') }}</span>
                 <ul class="toc-2">
                     {% for well_name in nearby_well_names %}
                     <li><a href="#nearby-{{ well_name }}">{{ well_name }}</a>
-                        <span class="toc-page-number">{{ toc_page_numbers['nearby-' + well_name] }}</span>
+                        <span class="toc-page-number">{{ toc_page_numbers.get('nearby-' + well_name, '') }}</span>
                     </li>
                     {% endfor %}
                 </ul>
             </li>
             <li><a href="#similar-wells">Similar Wells (Semantic Search)</a>
-                <span class="toc-page-number">{{ toc_page_numbers['similar-wells'] }}</span>
+                <span class="toc-page-number">{{ toc_page_numbers.get('similar-wells', '') }}</span>
                 <ul class="toc-2">
                     {% for well_name in similar_well_names %}
                     <li><a href="#similar-{{ well_name }}">{{ well_name }}</a>
-                        <span class="toc-page-number">{{ toc_page_numbers['similar-' + well_name] }}</span>
+                        <span class="toc-page-number">{{ toc_page_numbers.get('similar-' + well_name, '') }}</span>
                     </li>
                     {% endfor %}
                 </ul>
