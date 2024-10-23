@@ -95,25 +95,6 @@ def parse_date_column(series):
             parsed_dates.append(None)
     return pd.Series(parsed_dates)
 
-def convert_to_float(value):
-    try:
-        if pd.isnull(value):
-            return None
-        value = str(value).strip()
-        # Handle fractions like '8 1/2'
-        if re.match(r'^\d+\s+\d+/\d+$', value):
-            whole_part, frac_part = value.split()
-            return float(whole_part) + float(Fraction(frac_part))
-        elif re.match(r'^\d+/\d+$', value):
-            return float(Fraction(value))
-        else:
-            # Remove any extra spaces and commas
-            value = value.replace(',', '').strip()
-            return float(value)
-    except Exception as e:
-        logging.error(f"Error converting '{value}' to float: {e}")
-        return None
-
 def prepare_data(df, table_name):
     # Replace empty strings and whitespace-only strings with NaN
     df = df.replace(r'^\s*$', pd.NA, regex=True)
@@ -129,12 +110,14 @@ def prepare_data(df, table_name):
             df[date_col] = parse_date_column(df[date_col])
         except Exception as e:
             logging.error(f"Error parsing date column '{date_col}': {e}", exc_info=True)
-    # Handle numeric columns
+    
+    # Handle numeric columns except for well casings (keep them as strings)
     if table_name == 'well_casings':
-        float_columns = ['wlbcasingdiameter', 'wlbcasingdepth', 'wlbholediameter', 'wlbholedepth', 'wlblotmuddencity']
-        for col in float_columns:
+        # Keep the columns as strings to avoid NaN issues
+        string_columns = ['wlbcasingdiameter', 'wlbcasingdepth', 'wlbholediameter', 'wlbholedepth', 'wlblotmuddencity']
+        for col in string_columns:
             if col in df.columns:
-                df[col] = df[col].apply(convert_to_float)
+                df[col] = df[col].astype(str)
         # Filter out rows where required columns are null
         df = df.dropna(subset=['wlbcasingtype', 'wlbcasingdiameter', 'wlbcasingdepth'])
     if table_name == 'well_lito':
