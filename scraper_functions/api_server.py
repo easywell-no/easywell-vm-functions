@@ -97,11 +97,19 @@ async def scrape_and_store():
         if process_status["scrape_and_store"]["running"]:
             raise HTTPException(status_code=400, detail="Scraping and storing is already running.")
     try:
+        # Prepare environment variables
+        env = os.environ.copy()
+        # If needed, adjust PYTHONPATH
+        env["PYTHONPATH"] = os.pathsep.join([
+            os.path.dirname(os.path.abspath(__file__)),  # scraper_functions/
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "utils"),  # scraper_functions/utils/
+        ])
+
         # Start the scraping script
         process = subprocess.Popen(
-            [sys.executable, "scrape_and_store.py"],
+            [sys.executable, "all_scrape_and_store_functions/scrape_and_store.py"],
             cwd=os.path.dirname(os.path.abspath(__file__)),
-            env=os.environ.copy(),
+            env=env,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
@@ -116,6 +124,7 @@ async def scrape_and_store():
     except Exception as e:
         logging.error(f"Failed to start scrape_and_store: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/script_status/")
 async def script_status(status_request: ScriptStatus):
