@@ -8,7 +8,7 @@
         /* Global Styles */
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            margin: 30px;
+            margin: 20px;
             color: #2E3156;
             line-height: 1.5;
         }
@@ -31,32 +31,28 @@
         }
 
         h1 {
-            font-size: 20pt;
+            font-size: 22pt;
             text-align: center;
             margin-bottom: 20px;
-            /* Removed page-break-before to reduce excess page breaks */
         }
 
         h2 {
-            font-size: 16pt;
+            font-size: 18pt;
             margin-top: 30px;
             border-bottom: 2px solid #FF5A24;
             padding-bottom: 5px;
-            /* Adjusted to avoid too many page breaks */
         }
 
         h3 {
-            font-size: 14pt;
+            font-size: 16pt;
             margin-top: 25px;
             color: #34495E;
-            /* Adjusted to avoid too many page breaks */
         }
 
         p {
-            font-size: 11pt;
+            font-size: 12pt;
             text-align: justify;
             color: #2E3156;
-            page-break-inside: avoid;
             margin-bottom: 15px;
         }
 
@@ -76,21 +72,20 @@
             margin-top: 20px;
             background-color: #E8F6F3;
             border-radius: 5px;
-            /* Removed page-break-inside to allow content to flow naturally */
         }
 
         /* Header and Footer */
         @page {
             size: A4;
-            margin: 2cm;
+            margin: 1.5cm;
             @top-center {
                 content: "wellvector.ai";
-                font-size: 8pt;
+                font-size: 9pt;
                 color: #999;
             }
             @bottom-center {
                 content: counter(page);
-                font-size: 8pt;
+                font-size: 9pt;
                 color: #999;
             }
         }
@@ -101,7 +96,7 @@
         }
 
         .table-of-contents h2 {
-            font-size: 16pt;
+            font-size: 18pt;
             margin-top: 0;
         }
 
@@ -111,7 +106,7 @@
         }
 
         .table-of-contents li {
-            font-size: 11pt;
+            font-size: 12pt;
             margin-bottom: 5px;
         }
 
@@ -122,25 +117,25 @@
 
         /* Adjusted font sizes */
         h1 {
-            font-size: 20pt;
+            font-size: 22pt;
         }
 
         h2 {
-            font-size: 16pt;
+            font-size: 18pt;
         }
 
         h3 {
-            font-size: 14pt;
+            font-size: 16pt;
         }
 
         p, li {
-            font-size: 11pt;
+            font-size: 12pt;
         }
 
         /* Adjusted margins */
         body {
-            margin-left: 40px;
-            margin-right: 40px;
+            margin-left: 20px;
+            margin-right: 20px;
         }
 
         /* Remove link styling */
@@ -175,6 +170,70 @@
             margin-top: 40px;
         }
 
+        /* Page Numbering for TOC */
+        h2, h3, .well-profile {
+            counter-increment: page;
+            position: relative;
+        }
+
+        .toc-page-number {
+            float: right;
+        }
+
+        /* CSS Counter for Page Numbers */
+        body {
+            counter-reset: page 1;
+        }
+
+        @page {
+            @bottom-right {
+                content: "Page " counter(page);
+            }
+        }
+
+        /* TOC numbering */
+        .toc-1 {
+            counter-reset: item;
+        }
+
+        .toc-1 > li {
+            counter-increment: item;
+            position: relative;
+        }
+
+        .toc-1 > li::before {
+            content: counters(item, ".") ". ";
+            position: absolute;
+            left: -1.5em;
+        }
+
+        .toc-2 {
+            counter-reset: subitem;
+        }
+
+        .toc-2 > li {
+            counter-increment: subitem;
+            position: relative;
+        }
+
+        .toc-2 > li::before {
+            content: counters(item, ".") "." counters(subitem, ".") ". ";
+            position: absolute;
+            left: -1.5em;
+        }
+
+        /* Linking headings to TOC */
+        h2, h3 {
+            counter-increment: h;
+            position: relative;
+        }
+
+        h2::before {
+            content: counter(h);
+            position: absolute;
+            left: -1.5em;
+        }
+
     </style>
 </head>
 <body>
@@ -188,20 +247,30 @@
 
     <h2>Table of Contents</h2>
     <div class="table-of-contents">
-        <ul>
-            <li><a href="#executive-summary">Executive Summary</a></li>
-            <li><a href="#ai-analysis">AI-Driven Pre-Well Analysis Report</a></li>
+        <ul class="toc-1">
+            <li><a href="#executive-summary">Executive Summary</a>
+                <span class="toc-page-number">{{ toc_page_numbers['executive-summary'] }}</span>
+            </li>
+            <li><a href="#ai-analysis">AI-Driven Pre-Well Analysis Report</a>
+                <span class="toc-page-number">{{ toc_page_numbers['ai-analysis'] }}</span>
+            </li>
             <li><a href="#nearby-wells">Nearby Wells</a>
-                <ul>
+                <span class="toc-page-number">{{ toc_page_numbers['nearby-wells'] }}</span>
+                <ul class="toc-2">
                     {% for well_name in nearby_well_names %}
-                    <li><a href="#nearby-{{ well_name }}">{{ well_name }}</a></li>
+                    <li><a href="#nearby-{{ well_name }}">{{ well_name }}</a>
+                        <span class="toc-page-number">{{ toc_page_numbers['nearby-' + well_name] }}</span>
+                    </li>
                     {% endfor %}
                 </ul>
             </li>
             <li><a href="#similar-wells">Similar Wells (Semantic Search)</a>
-                <ul>
+                <span class="toc-page-number">{{ toc_page_numbers['similar-wells'] }}</span>
+                <ul class="toc-2">
                     {% for well_name in similar_well_names %}
-                    <li><a href="#similar-{{ well_name }}">{{ well_name }}</a></li>
+                    <li><a href="#similar-{{ well_name }}">{{ well_name }}</a>
+                        <span class="toc-page-number">{{ toc_page_numbers['similar-' + well_name] }}</span>
+                    </li>
                     {% endfor %}
                 </ul>
             </li>
@@ -209,7 +278,9 @@
     </div>
 
     <h2 id="executive-summary">Executive Summary</h2>
-    <p>{{ summary }}</p>
+    <p>
+        Welcome to our Pre-Well Drilling Analysis Report. At WellVector.ai, we leverage cutting-edge AI technology to provide comprehensive analyses for your drilling operations. Our platform synthesizes data from multiple sources to offer insights that are both deep and actionable. The AI-generated content highlighted in this report showcases the power and potential of our technology in revolutionizing the drilling industry.
+    </p>
 
     <h2 id="ai-analysis">AI-Driven Pre-Well Analysis Report</h2>
     <div class="ai-insights">
