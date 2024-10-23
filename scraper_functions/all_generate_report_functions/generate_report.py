@@ -57,34 +57,70 @@ def main():
         return
     input_lat, input_lon = user_input['latitude'], user_input['longitude']
 
-    # Stage 2: Data Retrieval with Pagination
-    well_names, distance_map = data_retrieval.fetch_well_names(
-        supabase, input_lat, input_lon, max_distance_km=50, max_wells=5, batch_size=1000
-    )
-    if not well_names:
-        logging.error("No wells found within the specified criteria. Exiting.")
+    # Stage 2: Data Retrieval
+    # Step 2.1: Get 5 closest wells based on location
+    try:
+        nearby_wells = data_retrieval.get_nearby_wells(
+            supabase, input_lat, input_lon, radius_km=50, limit=5
+        )
+        if not nearby_wells:
+            logging.error("No nearby wells found. Exiting.")
+            return
+        logging.info(f"Retrieved {len(nearby_wells)} nearby wells.")
+    except Exception as e:
+        logging.error(f"Error retrieving nearby wells: {e}")
         return
 
-    # Stage 3: Get Well Profiles with Distance
-    well_profiles = data_retrieval.get_well_profiles_with_distance(well_names, distance_map, supabase)
-    if not well_profiles:
-        logging.error("Failed to retrieve well profiles. Exiting.")
+    # Step 2.2: Use nearby wells for similarity search to get additional wells
+    try:
+        similar_wells = data_retrieval.get_similar_wells(
+            supabase, nearby_wells, top_k=5
+        )
+        logging.info(f"Retrieved {len(similar_wells)} similar wells.")
+    except Exception as e:
+        logging.error(f"Error retrieving similar wells: {e}")
         return
 
-    # Stage 4: AI-Driven Insights
-    ai_insight_text = ai_insights.generate_ai_insights(well_profiles)
-    if not ai_insight_text:
-        logging.error("Failed to generate AI insights. Exiting.")
+    # Step 2.3: Combine wells and ensure no duplicates
+    all_well_names = list(set(nearby_wells + similar_wells))
+    logging.info(f"Total wells to use in report: {len(all_well_names)}")
+
+    # Step 2.4: Retrieve well profiles
+    try:
+        well_profiles = data_retrieval.get_well_profiles(supabase, all_well_names)
+        if not well_profiles:
+            logging.error("Failed to retrieve well profiles. Exiting.")
+            return
+    except Exception as e:
+        logging.error(f"Error retrieving well profiles: {e}")
         return
 
-    # Stage 5: Report Compilation
-    report = report_compilation.compile_report(well_profiles, ai_insight_text)
-    if not report:
-        logging.error("Failed to compile the report. Exiting.")
+    # Stage 3: AI-Driven Insights
+    try:
+        ai_insight_text = ai_insights.generate_ai_insights(well_profiles, input_lat, input_lon)
+        if not ai_insight_text:
+            logging.error("Failed to generate AI insights. Exiting.")
+            return
+    except Exception as e:
+        logging.error(f"Error generating AI insights: {e}")
         return
 
-    # Stage 6: Report Delivery
-    report_delivery.deliver_report(report)
+    # Stage 4: Report Compilation
+    try:
+        report = report_compilation.compile_report(well_profiles, ai_insight_text)
+        if not report:
+            logging.error("Failed to compile the report. Exiting.")
+            return
+    except Exception as e:
+        logging.error(f"Error compiling report: {e}")
+        return
+
+    # Stage 5: Report Delivery
+    try:
+        report_delivery.deliver_report(report)
+    except Exception as e:
+        logging.error(f"Error delivering report: {e}")
+        return
 
     logging.info("Report generation process completed successfully.")
 
