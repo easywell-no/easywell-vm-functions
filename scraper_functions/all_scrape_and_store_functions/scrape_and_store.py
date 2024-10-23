@@ -172,13 +172,13 @@ def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFram
 
 def main():
     try:
-        # Define URLs
+        # Updated URLs
         urls = {
-            'well_history': 'https://factpages.npd.no/ReportServer?/FactPages/TableView/wellbore_all&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en',
-            'well_coordinates': 'https://factpages.npd.no/ReportServer?/FactPages/TableView/wellbore_coordinates_all&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en',
-            'well_mud': 'https://factpages.npd.no/ReportServer?/FactPages/TableView/wellbore_mud_all&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en',
-            'well_casings': 'https://factpages.npd.no/ReportServer?/FactPages/TableView/wellbore_casing_and_lot_all&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en',
-            'well_lito': 'https://factpages.npd.no/ReportServer?/FactPages/TableView/wellbore_formation_top_all&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en'
+            'well_history': 'https://factpages.sodir.no/public?/Factpages/external/tableview/wellbore_history&rs:Command=Render&rc:Toolbar=false&rc:Parameters=f&IpAddress=not_used&CultureCode=nb-no&rs:Format=CSV&Top100=false',
+            'well_coordinates': 'https://factpages.sodir.no/public?/Factpages/external/tableview/wellbore_coordinates&rs:Command=Render&rc:Toolbar=false&rc:Parameters=f&IpAddress=not_used&CultureCode=nb-no&rs:Format=CSV&Top100=false',
+            'well_mud': 'https://factpages.sodir.no/public?/Factpages/external/tableview/wellbore_mud&rs:Command=Render&rc:Toolbar=false&rc:Parameters=f&IpAddress=not_used&CultureCode=nb-no&rs:Format=CSV&Top100=false',
+            'well_casings': 'https://factpages.sodir.no/public?/Factpages/external/tableview/wellbore_casing_and_lot&rs:Command=Render&rc:Toolbar=false&rc:Parameters=f&IpAddress=not_used&CultureCode=nb-no&rs:Format=CSV&Top100=false',
+            'well_lito': 'https://factpages.sodir.no/public?/Factpages/external/tableview/wellbore_formation_top&rs:Command=Render&rc:Toolbar=false&rc:Parameters=f&IpAddress=not_used&CultureCode=nb-no&rs:Format=CSV&Top100=false'
         }
 
         for table_name, url in urls.items():
