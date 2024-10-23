@@ -81,14 +81,36 @@ def get_similar_wells(supabase, well_names: List[str], top_k=5) -> List[str]:
         logging.error(f"Error fetching embeddings for wells: {e}")
         return []
 
-    # Calculate the average embedding
+    # Convert vectors to numpy arrays
     import numpy as np
-    vectors = [well['vector'] for well in embeddings if well['vector'] is not None]
+    vectors = []
+    for well in embeddings:
+        vector = well['vector']
+        if vector is not None:
+            if isinstance(vector, list):
+                # If vector is already a list, convert to numpy array
+                vectors.append(np.array(vector, dtype=float))
+            elif isinstance(vector, str):
+                # If vector is a string, parse it into a list of floats
+                vector = vector.strip('[]')  # Remove brackets if any
+                vector = vector.split(',')
+                vector = [float(x.strip()) for x in vector]
+                vectors.append(np.array(vector, dtype=float))
+            else:
+                # Handle other possible formats
+                logging.error(f"Unexpected vector format for well {well['wlbwellborename']}: {type(vector)}")
+                continue
+
     if not vectors:
         logging.error("No valid embeddings found for the given wells.")
         return []
 
-    average_embedding = np.mean(vectors, axis=0).tolist()
+    # Calculate the average embedding
+    try:
+        average_embedding = np.mean(vectors, axis=0).tolist()
+    except Exception as e:
+        logging.error(f"Error calculating average embedding: {e}")
+        return []
 
     try:
         # Perform similarity search using the average embedding
