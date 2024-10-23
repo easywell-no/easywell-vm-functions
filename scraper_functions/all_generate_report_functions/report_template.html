@@ -90,54 +90,6 @@
             }
         }
 
-        /* Table of Contents */
-        .table-of-contents {
-            margin-top: 20px;
-        }
-
-        .table-of-contents h2 {
-            font-size: 18pt;
-            margin-top: 0;
-        }
-
-        .table-of-contents ul {
-            list-style: none;
-            padding-left: 0;
-        }
-
-        .table-of-contents li {
-            font-size: 12pt;
-            margin-bottom: 5px;
-        }
-
-        .table-of-contents a {
-            color: #2E3156;
-            text-decoration: none;
-        }
-
-        /* Adjusted font sizes */
-        h1 {
-            font-size: 22pt;
-        }
-
-        h2 {
-            font-size: 18pt;
-        }
-
-        h3 {
-            font-size: 16pt;
-        }
-
-        p, li {
-            font-size: 12pt;
-        }
-
-        /* Adjusted margins */
-        body {
-            margin-left: 20px;
-            margin-right: 20px;
-        }
-
         /* Remove link styling */
         a {
             color: inherit;
@@ -170,70 +122,6 @@
             margin-top: 40px;
         }
 
-        /* Page Numbering for TOC */
-        h2, h3, .well-profile {
-            counter-increment: page;
-            position: relative;
-        }
-
-        .toc-page-number {
-            float: right;
-        }
-
-        /* CSS Counter for Page Numbers */
-        body {
-            counter-reset: page 1;
-        }
-
-        @page {
-            @bottom-right {
-                content: "Page " counter(page);
-            }
-        }
-
-        /* TOC numbering */
-        .toc-1 {
-            counter-reset: item;
-        }
-
-        .toc-1 > li {
-            counter-increment: item;
-            position: relative;
-        }
-
-        .toc-1 > li::before {
-            content: counters(item, ".") ". ";
-            position: absolute;
-            left: -1.5em;
-        }
-
-        .toc-2 {
-            counter-reset: subitem;
-        }
-
-        .toc-2 > li {
-            counter-increment: subitem;
-            position: relative;
-        }
-
-        .toc-2 > li::before {
-            content: counters(item, ".") "." counters(subitem, ".") ". ";
-            position: absolute;
-            left: -1.5em;
-        }
-
-        /* Linking headings to TOC */
-        h2, h3 {
-            counter-increment: h;
-            position: relative;
-        }
-
-        h2::before {
-            content: counter(h);
-            position: absolute;
-            left: -1.5em;
-        }
-
     </style>
 </head>
 <body>
@@ -245,42 +133,13 @@
 
     <p><strong>Generated on:</strong> {{ generation_date }}</p>
 
+    <!-- WeasyPrint TOC Placeholder -->
+    <!-- TOC -->
+
     <h2 id="executive-summary">Executive Summary</h2>
     <p>
         Welcome to our Pre-Well Drilling Analysis Report. At WellVector.ai, we leverage cutting-edge AI technology to provide comprehensive analyses for your drilling operations. Our platform synthesizes data from multiple sources to offer insights that are both deep and actionable. The AI-generated content highlighted in this report showcases the power and potential of our technology in revolutionizing the drilling industry.
     </p>
-
-    <h2>Table of Contents</h2>
-    <div class="table-of-contents">
-        <ul class="toc-1">
-            <li><a href="#executive-summary">Executive Summary</a>
-                <span class="toc-page-number">{{ toc_page_numbers['executive-summary'] }}</span>
-            </li>
-            <li><a href="#ai-analysis">AI-Driven Pre-Well Analysis Report</a>
-                <span class="toc-page-number">{{ toc_page_numbers['ai-analysis'] }}</span>
-            </li>
-            <li><a href="#nearby-wells">Nearby Wells</a>
-                <span class="toc-page-number">{{ toc_page_numbers['nearby-wells'] }}</span>
-                <ul class="toc-2">
-                    {% for well_name in nearby_well_names %}
-                    <li><a href="#nearby-{{ well_name }}">{{ well_name }}</a>
-                        <span class="toc-page-number">{{ toc_page_numbers['nearby-' + well_name] }}</span>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </li>
-            <li><a href="#similar-wells">Similar Wells (Semantic Search)</a>
-                <span class="toc-page-number">{{ toc_page_numbers['similar-wells'] }}</span>
-                <ul class="toc-2">
-                    {% for well_name in similar_well_names %}
-                    <li><a href="#similar-{{ well_name }}">{{ well_name }}</a>
-                        <span class="toc-page-number">{{ toc_page_numbers['similar-' + well_name] }}</span>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </li>
-        </ul>
-    </div>
 
     <h2 id="ai-analysis">AI-Driven Pre-Well Analysis Report</h2>
     <div class="ai-insights">
@@ -291,7 +150,7 @@
     <p>The following wells are located near the proposed drilling site:</p>
     <ul>
         {% for well in nearby_wells %}
-        <li>{{ well.wlbwellborename }} (Distance: {{ well.distance | round(2) }} km)</li>
+        <li><a href="#nearby-{{ well.wlbwellborename }}">{{ well.wlbwellborename }} (Distance: {{ well.distance | round(2) }} km)</a></li>
         {% endfor %}
     </ul>
     {% for well in nearby_wells %}
@@ -305,7 +164,7 @@
     <p>The following wells were selected based on semantic similarity to the nearby wells:</p>
     <ul>
         {% for well in similar_wells %}
-        <li>{{ well.wlbwellborename }}</li>
+        <li><a href="#similar-{{ well.wlbwellborename }}">{{ well.wlbwellborename }}</a></li>
         {% endfor %}
     </ul>
     {% for well in similar_wells %}
