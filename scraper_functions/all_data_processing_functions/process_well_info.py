@@ -105,17 +105,48 @@ def main():
 
 def convert_well_profile_to_text(well_profile_dict):
     """
-    Converts the well_profile dictionary into a readable text format.
+    Converts the well_profile dictionary into a readable and concise text format.
     """
     lines = []
-    for key, value in well_profile_dict.items():
-        if isinstance(value, list):
-            lines.append(f"{key}:")
-            for item in value:
-                lines.append(json.dumps(item))
-        else:
-            lines.append(f"{key}: {value}")
+    # Extract data from well_coordinates
+    if well_profile_dict.get('well_coordinates'):
+        coord = well_profile_dict['well_coordinates'][0]
+        lines.append(f"Well Name: {coord.get('wlbwellborename', 'N/A')}")
+        lines.append(f"Operator: {coord.get('wlbdrillingoperator', 'N/A')}")
+        lines.append(f"Licence: {coord.get('wlbproductionlicence', 'N/A')}")
+        lines.append(f"Well Type: {coord.get('wlbwelltype', 'N/A')}")
+        lines.append(f"Purpose: {coord.get('wlbpurposeplanned', 'N/A')}")
+        lines.append(f"Content: {coord.get('wlbcontent', 'N/A')}")
+        lines.append(f"Entry Date: {coord.get('wlbentrydate', 'N/A')}")
+        lines.append(f"Completion Date: {coord.get('wlbcompletiondate', 'N/A')}")
+        lines.append(f"Field: {coord.get('wlbfield', 'N/A')}")
+        lines.append(f"Location: Latitude {coord.get('wlbnsdecdeg', 'N/A')}, Longitude {coord.get('wlbewdecdeg', 'N/A')}")
+        lines.append("")  # Add a blank line for readability
+
+    # Add well_history
+    if well_profile_dict.get('well_history'):
+        lines.append("Well History:")
+        lines.extend(well_profile_dict['well_history'])
+        lines.append("")
+
+    # Add formations from well_lito
+    if well_profile_dict.get('well_lito'):
+        lines.append("Formations:")
+        for lito in well_profile_dict['well_lito']:
+            formation_info = f"{lito.get('lsuname', 'N/A')}: Top Depth {lito.get('lsutopdepth', 'N/A')} m, Bottom Depth {lito.get('lsubottomdepth', 'N/A')} m"
+            lines.append(formation_info)
+        lines.append("")
+
+    # Add casings from well_casings
+    if well_profile_dict.get('well_casings'):
+        lines.append("Casings:")
+        for casing in well_profile_dict['well_casings']:
+            casing_info = f"{casing.get('wlbcasingtype', 'N/A')}: Diameter {casing.get('wlbcasingdiameter', 'N/A')}, Depth {casing.get('wlbcasingdepth', 'N/A')} m"
+            lines.append(casing_info)
+        lines.append("")
+
     return "\n".join(lines)
+
 
 if __name__ == '__main__':
     main()
