@@ -78,7 +78,7 @@ def generate_pre_well_analysis_report(prompt):
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=7000,  # Increased max_tokens to allow for more detailed output
+            max_tokens=5000,  # Increased max_tokens to allow for more detailed output
             temperature=0.5
         )
         report = response['choices'][0]['message']['content'].strip()
