@@ -1,4 +1,4 @@
-# all_generate_report_functions/report_delivery.py
+# report_delivery.py
 
 import logging
 from typing import Dict
@@ -17,9 +17,12 @@ def deliver_report(report: Dict):
     """
     logging.info("Stage 5: Report Delivery started.")
 
-    # Setup Jinja2 Environment
+    # Get the directory of the current script
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Setup Jinja2 Environment to load templates from the current directory
     env = Environment(
-        loader=FileSystemLoader(searchpath="templates"),
+        loader=FileSystemLoader(searchpath=current_dir),
         autoescape=select_autoescape(['html', 'xml'])
     )
 
