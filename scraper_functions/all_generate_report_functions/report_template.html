@@ -14,40 +14,43 @@
 
         h1, h2, h3 {
             color: #2E3156;
+            page-break-after: avoid;
         }
 
         h1 {
-            font-size: 24pt;
+            font-size: 18pt;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         h2 {
-            font-size: 18pt;
-            margin-top: 30px;
+            font-size: 14pt;
+            margin-top: 20px;
             border-bottom: 2px solid #FF5A24;
-            padding-bottom: 10px;
+            padding-bottom: 5px;
         }
 
         h3 {
-            font-size: 14pt;
-            margin-top: 20px;
+            font-size: 12pt;
+            margin-top: 15px;
             color: #34495E;
         }
 
         p {
-            font-size: 12pt;
+            font-size: 10pt;
             text-align: justify;
             color: #2E3156;
+            page-break-inside: avoid;
         }
 
         /* Well Profiles */
         .well-profile {
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             padding: 15px;
             border: 1px solid #ccc;
             border-radius: 5px;
             background-color: #F9F9F9;
+            page-break-before: always;
         }
 
         /* AI Insights */
@@ -56,14 +59,43 @@
             margin-top: 20px;
             background-color: #E8F6F3;
             border-radius: 5px;
+            page-break-inside: avoid;
         }
 
-        /* Footer */
-        .footer {
-            text-align: center;
+        /* Header and Footer */
+        @page {
+            size: A4;
+            margin: 2cm;
+            @top-center {
+                content: "wellvector.ai";
+                font-size: 8pt;
+                color: #999;
+            }
+            @bottom-center {
+                content: counter(page);
+                font-size: 8pt;
+                color: #999;
+            }
+        }
+
+        /* Table of Contents */
+        .table-of-contents {
+            margin-top: 20px;
+        }
+
+        .table-of-contents h2 {
+            font-size: 14pt;
+            margin-top: 0;
+        }
+
+        .table-of-contents ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .table-of-contents li {
             font-size: 10pt;
-            color: #999;
-            margin-top: 50px;
+            margin-bottom: 5px;
         }
 
         /* Page Breaks */
@@ -71,46 +103,26 @@
             page-break-before: always;
         }
 
-        /* Hyperlinks */
-        a {
-            color: #FF5A24;
-            text-decoration: none;
+        /* Avoid page breaks inside elements */
+        .no-page-break {
+            page-break-inside: avoid;
         }
 
-        a:hover {
-            text-decoration: underline;
+        /* Adjusted font sizes */
+        h1 {
+            font-size: 16pt;
         }
 
-        /* Blockquotes */
-        blockquote {
-            border-left: 5px solid #FF5A24;
-            padding-left: 15px;
-            color: #2E3156;
-            font-style: italic;
-            background-color: #F9F9F9;
-            margin: 20px 0;
+        h2 {
+            font-size: 12pt;
         }
 
-        /* Lists */
-        ul, ol {
-            margin-left: 20px;
+        h3 {
+            font-size: 10pt;
         }
 
-        /* Table Styles */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-
-        th, td {
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: left;
-        }
-
-        th {
-            background-color: #F2F2F2;
+        p {
+            font-size: 9pt;
         }
 
     </style>
@@ -120,33 +132,66 @@
 
     <p><strong>Generated on:</strong> {{ generation_date }}</p>
 
-    <h2>Executive Summary</h2>
+    <h2>Table of Contents</h2>
+    <div class="table-of-contents">
+        <ul>
+            <li><a href="#executive-summary">Executive Summary</a></li>
+            <li><a href="#ai-analysis">AI-Driven Pre-Well Analysis Report</a></li>
+            <li><a href="#nearby-wells">Nearby Wells</a>
+                <ul>
+                    {% for well_name in nearby_well_names %}
+                    <li><a href="#nearby-{{ well_name }}">{{ well_name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+            <li><a href="#similar-wells">Similar Wells (Semantic Search)</a>
+                <ul>
+                    {% for well_name in similar_well_names %}
+                    <li><a href="#similar-{{ well_name }}">{{ well_name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <h2 id="executive-summary">Executive Summary</h2>
     <p>{{ summary }}</p>
 
-    <h2>AI-Driven Pre-Well Analysis Report</h2>
+    <h2 id="ai-analysis">AI-Driven Pre-Well Analysis Report</h2>
     <div class="ai-insights">
         {{ ai_insights | safe }}
     </div>
 
-    <h2>Nearby Wells</h2>
-    {% for well_name, data in nearby_wells.items() %}
-    <div class="well-profile">
-        <h3>Well {{ well_name }}</h3>
-        <p>{{ data.well_profile | safe }}</p>
+    <h2 id="nearby-wells">Nearby Wells</h2>
+    <p>The following wells are located near the proposed drilling site:</p>
+    <ul>
+        {% for well in nearby_wells %}
+        <li>{{ well.wlbwellborename }} (Distance: {{ well.distance | round(2) }} km)</li>
+        {% endfor %}
+    </ul>
+    {% for well in nearby_wells %}
+    <div class="well-profile" id="nearby-{{ well.wlbwellborename }}">
+        <h3>Well {{ well.wlbwellborename }}</h3>
+        <p>{{ well.well_profile | safe }}</p>
     </div>
     {% endfor %}
 
-    <h2>Similar Wells (Semantic Search)</h2>
-    <p>The following wells were selected based on semantic similarity to the nearby wells.</p>
-    {% for well_name, data in similar_wells.items() %}
-    <div class="well-profile">
-        <h3>Well {{ well_name }}</h3>
-        <p>{{ data.well_profile | safe }}</p>
+    <h2 id="similar-wells">Similar Wells (Semantic Search)</h2>
+    <p>The following wells were selected based on semantic similarity to the nearby wells:</p>
+    <ul>
+        {% for well in similar_wells %}
+        <li>{{ well.wlbwellborename }}</li>
+        {% endfor %}
+    </ul>
+    {% for well in similar_wells %}
+    <div class="well-profile" id="similar-{{ well.wlbwellborename }}">
+        <h3>Well {{ well.wlbwellborename }}</h3>
+        <p>{{ well.well_profile | safe }}</p>
     </div>
     {% endfor %}
 
     <div class="footer">
-        &copy; {{ generation_date[:4] }} EasyWell. All rights reserved.
+        &copy; {{ generation_date[:4] }} wellvector.ai. All rights reserved.
     </div>
 </body>
 </html>

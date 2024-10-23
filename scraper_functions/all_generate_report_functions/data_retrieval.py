@@ -1,6 +1,5 @@
 # data_retrieval.py
 
-import logging
 import math
 from typing import List, Dict
 
@@ -17,10 +16,11 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-def get_nearby_wells(supabase, user_latitude, user_longitude, radius_km=50, limit=3) -> List[str]:
+def get_nearby_wells(supabase, user_latitude, user_longitude, radius_km=50, limit=3) -> List[Dict]:
     """
     Retrieves wells within a specified radius from the user's location.
     Only includes wells of type 'EXPLORATION'.
+    Returns a list of dictionaries with well name and distance.
     """
     try:
         # Fetch wells with coordinates where wlbwelltype is 'EXPLORATION'
@@ -28,14 +28,13 @@ def get_nearby_wells(supabase, user_latitude, user_longitude, radius_km=50, limi
             'wlbwellborename, wlbnsdecdeg, wlbewdecdeg'
         ).eq('wlbwelltype', 'EXPLORATION').execute()
 
-        # Check if the response has data
         wells = response.data
         if not wells:
-            logging.error("No wells found in the well_coordinates table with type 'EXPLORATION'.")
+            print("No wells found in the well_coordinates table with type 'EXPLORATION'.")
             return []
 
     except Exception as e:
-        logging.error(f"Error fetching well coordinates: {e}")
+        print(f"Error fetching well coordinates: {e}")
         return []
 
     nearby_wells = []
@@ -52,19 +51,20 @@ def get_nearby_wells(supabase, user_latitude, user_longitude, radius_km=50, limi
             })
 
     if not nearby_wells:
-        logging.error("No nearby wells found within the specified radius.")
+        print("No nearby wells found within the specified radius.")
         return []
 
     # Sort wells by distance and limit to the specified number
     nearby_wells.sort(key=lambda x: x['distance'])
-    well_names = [well['wlbwellborename'] for well in nearby_wells[:limit]]
+    nearby_wells = nearby_wells[:limit]
 
-    return well_names
+    return nearby_wells
 
-def get_similar_wells(supabase, well_names: List[str], top_k=3) -> List[str]:
+def get_similar_wells(supabase, well_names: List[str], top_k=3) -> List[Dict]:
     """
     Retrieves wells similar to the given wells using embeddings.
     Ensures that the returned wells are not in the original list.
+    Returns a list of dictionaries with well name and similarity score.
     """
     try:
         # Get embeddings for the given wells
@@ -74,11 +74,11 @@ def get_similar_wells(supabase, well_names: List[str], top_k=3) -> List[str]:
 
         embeddings = response.data
         if not embeddings:
-            logging.error("No embeddings found for the given wells.")
+            print("No embeddings found for the given wells.")
             return []
 
     except Exception as e:
-        logging.error(f"Error fetching embeddings for wells: {e}")
+        print(f"Error fetching embeddings for wells: {e}")
         return []
 
     # Convert vectors to numpy arrays
@@ -88,28 +88,24 @@ def get_similar_wells(supabase, well_names: List[str], top_k=3) -> List[str]:
         vector = well['vector']
         if vector is not None:
             if isinstance(vector, list):
-                # If vector is already a list, convert to numpy array
                 vectors.append(np.array(vector, dtype=float))
             elif isinstance(vector, str):
-                # If vector is a string, parse it into a list of floats
-                vector = vector.strip('[]')  # Remove brackets if any
-                vector = vector.split(',')
+                vector = vector.strip('[]').split(',')
                 vector = [float(x.strip()) for x in vector]
                 vectors.append(np.array(vector, dtype=float))
             else:
-                # Handle other possible formats
-                logging.error(f"Unexpected vector format for well {well['wlbwellborename']}: {type(vector)}")
+                print(f"Unexpected vector format for well {well['wlbwellborename']}: {type(vector)}")
                 continue
 
     if not vectors:
-        logging.error("No valid embeddings found for the given wells.")
+        print("No valid embeddings found for the given wells.")
         return []
 
     # Calculate the average embedding
     try:
         average_embedding = np.mean(vectors, axis=0).tolist()
     except Exception as e:
-        logging.error(f"Error calculating average embedding: {e}")
+        print(f"Error calculating average embedding: {e}")
         return []
 
     try:
@@ -121,22 +117,33 @@ def get_similar_wells(supabase, well_names: List[str], top_k=3) -> List[str]:
 
         similar_wells_data = response.data
         if not similar_wells_data:
-            logging.error("No similar wells found using embeddings.")
+            print("No similar wells found using embeddings.")
             return []
 
     except Exception as e:
-        logging.error(f"Error performing similarity search: {e}")
+        print(f"Error performing similarity search: {e}")
         return []
 
-    similar_wells = [item['wlbwellborename'] for item in similar_wells_data if item['wlbwellborename'] not in well_names]
+    similar_wells = []
+    for item in similar_wells_data:
+        if item['wlbwellborename'] not in well_names:
+            similar_wells.append({
+                'wlbwellborename': item['wlbwellborename'],
+                'similarity_score': item.get('similarity', 0)  # Assuming 'similarity' is returned
+            })
 
     # Limit to top_k wells
-    return similar_wells[:top_k]
+    similar_wells = similar_wells[:top_k]
 
-def get_well_profiles(supabase, well_names: List[str]) -> List[Dict]:
+    return similar_wells
+
+def get_well_profiles(supabase, well_list: List[Dict]) -> List[Dict]:
     """
-    Retrieves well profiles for the given list of well names.
+    Retrieves well profiles for the given list of wells.
+    Each well in well_list is a dict with 'wlbwellborename' and other info.
+    Returns a list of dicts including the well profile and other data.
     """
+    well_names = [well['wlbwellborename'] for well in well_list]
     try:
         response = supabase.table('well_profiles').select(
             'wlbwellborename, well_profile'
@@ -144,11 +151,20 @@ def get_well_profiles(supabase, well_names: List[str]) -> List[Dict]:
 
         well_profiles = response.data
         if not well_profiles:
-            logging.error("No well profiles found for the specified wells.")
+            print("No well profiles found for the specified wells.")
             return []
 
     except Exception as e:
-        logging.error(f"Error fetching well profiles: {e}")
+        print(f"Error fetching well profiles: {e}")
         return []
 
-    return well_profiles
+    # Merge the well profiles with the original well_list data
+    well_profiles_dict = {wp['wlbwellborename']: wp for wp in well_profiles}
+    result = []
+    for well in well_list:
+        wlbwellborename = well['wlbwellborename']
+        if wlbwellborename in well_profiles_dict:
+            merged_well = {**well, **well_profiles_dict[wlbwellborename]}
+            result.append(merged_well)
+
+    return result
