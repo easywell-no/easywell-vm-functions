@@ -119,8 +119,30 @@ def prepare_data(df, table_name):
         # Filter out rows where required columns are null
         df = df.dropna(subset=['wlbcasingtype', 'wlbcasingdiameter', 'wlbcasingdepth'])
 
-    # Handle other tables if needed (well_lito, well_mud)
-    
+    if table_name == 'well_lito':
+        integer_columns = ['lsunpdidlithostrat', 'lsunpdidlithostratparent', 'wlbnpdidwellbore']
+        for col in integer_columns:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+        # Ensure 'lsutopdepth' and 'lsubottomdepth' are numeric
+        float_columns = ['lsutopdepth', 'lsubottomdepth']
+        for col in float_columns:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        # Filter out rows where required columns are null
+        df = df.dropna(subset=['lsutopdepth', 'lsuname'])
+
+    if table_name == 'well_mud':
+        # Remove duplicates based on primary key
+        required_columns = ['wlbwellborename', 'wlbmd', 'wlbmuddatemeasured']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            logging.error(f"Missing columns {missing_columns} in 'well_mud' data")
+        else:
+            df = df.drop_duplicates(subset=required_columns)
+        # Filter out rows where required columns are null
+        df = df.dropna(subset=['wlbwellborename', 'wlbmd', 'wlbmuddatemeasured'])
+
     # Replace pd.NA and pd.NaT with None to avoid issues during insertion
     df = df.replace({pd.NA: None, pd.NaT: None})
 
@@ -128,6 +150,10 @@ def prepare_data(df, table_name):
 
 def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFrame):
     try:
+        # Delete all existing data in the table if necessary (optional)
+        delete_response = supabase.table(table_name).delete().neq('wlbwellborename', '').execute()
+        logging.info(f"Deleted records from '{table_name}'")
+        
         # Insert new data in chunks
         data = df.to_dict(orient='records')
         chunk_size = 500
@@ -135,7 +161,7 @@ def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFram
             chunk = data[i:i+chunk_size]
             try:
                 # Use upsert=True to avoid primary key conflicts
-                supabase.table(table_name).insert(chunk, upsert=True).execute()
+                supabase.table(table_name).upsert(chunk).execute()
             except Exception as e:
                 logging.error(f"Error inserting/upserting data into '{table_name}': {e}")
                 continue
