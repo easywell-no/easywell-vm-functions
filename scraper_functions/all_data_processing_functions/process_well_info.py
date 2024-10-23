@@ -14,8 +14,8 @@ parent_dir = os.path.dirname(current_dir)
 utils_dir = os.path.join(parent_dir, 'utils')
 sys.path.append(utils_dir)
 
-# Skipping embeddings for now
-# from get_embedding import get_embedding
+# Import get_embedding function
+from get_embedding import get_embedding
 
 # Import the create_well_profiles module
 from create_well_profiles import get_well_profile
@@ -25,6 +25,11 @@ env_path = os.path.join(parent_dir, '.env')
 load_dotenv(dotenv_path=env_path)
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
+# Set OpenAI API key
+import openai
+openai.api_key = OPENAI_API_KEY
 
 # Configure logging
 log_dir = os.path.join(parent_dir, "logs")
@@ -68,26 +73,24 @@ def main():
         logging.error(f"Error fetching wellborenames from 'well_history': {e}", exc_info=True)
         return
 
-    batch_size = 100  # Adjust as needed
+    batch_size = 50  # Adjust as needed
     for i in range(0, total_wells, batch_size):
         batch_wellborenames = wellborenames[i:i+batch_size]
         logging.info(f"Processing wells {i+1} to {i+len(batch_wellborenames)}")
 
         for wlbwellborename in batch_wellborenames:
             try:
-                # Get the well_profile
-                well_profile = get_well_profile(wlbwellborename)
+                # Get the well_profile as a text string
+                well_profile_dict = get_well_profile(wlbwellborename)
+                well_profile_text = convert_well_profile_to_text(well_profile_dict)
 
-                # Convert well_profile to JSON string
-                well_profile_json = json.dumps(well_profile)
-
-                # Skip embedding for now
-                vector = None
+                # Generate embedding vector for the well_profile
+                vector = get_embedding(well_profile_text)
 
                 # Prepare the data to insert
                 data = {
                     'wlbwellborename': wlbwellborename,
-                    'well_profile': well_profile,
+                    'well_profile': well_profile_text,
                     'vector': vector
                 }
 
@@ -99,6 +102,20 @@ def main():
                 continue
 
     logging.info("All wells processed successfully.")
+
+def convert_well_profile_to_text(well_profile_dict):
+    """
+    Converts the well_profile dictionary into a readable text format.
+    """
+    lines = []
+    for key, value in well_profile_dict.items():
+        if isinstance(value, list):
+            lines.append(f"{key}:")
+            for item in value:
+                lines.append(json.dumps(item))
+        else:
+            lines.append(f"{key}: {value}")
+    return "\n".join(lines)
 
 if __name__ == '__main__':
     main()
