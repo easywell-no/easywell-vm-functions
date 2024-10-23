@@ -14,13 +14,15 @@ parent_dir = os.path.dirname(current_dir)
 utils_dir = os.path.join(parent_dir, 'utils')
 sys.path.append(utils_dir)
 
-from get_embedding import get_embedding
+# Skipping embeddings for now
+# from get_embedding import get_embedding
 
 # Import the create_well_profiles module
 from create_well_profiles import get_well_profile
 
 # Load environment variables
-load_dotenv()
+env_path = os.path.join(parent_dir, '.env')
+load_dotenv(dotenv_path=env_path)
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -43,18 +45,30 @@ logging.basicConfig(
 # Create Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+def fetch_all_wellborenames():
+    batch_size = 1000  # Adjust as needed
+    offset = 0
+    all_wellborenames = set()
+    while True:
+        response = supabase.table('well_history').select('wlbwellborename').range(offset, offset + batch_size - 1).execute()
+        data = response.data
+        if not data:
+            break
+        all_wellborenames.update(item['wlbwellborename'] for item in data)
+        offset += batch_size
+    return list(all_wellborenames)
+
 def main():
     # Get list of unique wlbwellborename from well_history
     try:
-        response = supabase.table('well_history').select('wlbwellborename').execute()
-        wellborenames = list(set(item['wlbwellborename'] for item in response.data))
+        wellborenames = fetch_all_wellborenames()
         total_wells = len(wellborenames)
         logging.info(f"Total wells to process: {total_wells}")
     except Exception as e:
         logging.error(f"Error fetching wellborenames from 'well_history': {e}", exc_info=True)
         return
 
-    batch_size = 100
+    batch_size = 100  # Adjust as needed
     for i in range(0, total_wells, batch_size):
         batch_wellborenames = wellborenames[i:i+batch_size]
         logging.info(f"Processing wells {i+1} to {i+len(batch_wellborenames)}")
@@ -67,8 +81,8 @@ def main():
                 # Convert well_profile to JSON string
                 well_profile_json = json.dumps(well_profile)
 
-                # Generate embedding vector for the well_profile
-                vector = get_embedding(well_profile_json)
+                # Skip embedding for now
+                vector = None
 
                 # Prepare the data to insert
                 data = {
