@@ -20,9 +20,8 @@ from cleaner import cleanup
 env_path = os.path.join(parent_dir, '.env')
 load_dotenv(dotenv_path=env_path)
 
-
 # Create log directory if it doesn't exist
-log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+log_dir = os.path.join(parent_dir, "logs")  # Updated to ensure logs are in the correct directory
 os.makedirs(log_dir, exist_ok=True)
 
 # Configure logging for scrape_and_store.py
@@ -72,25 +71,25 @@ def fetch_csv(url):
 def prepare_data(df):
     # Replace empty strings and whitespace-only strings with NaN
     df = df.replace(r'^\s*$', pd.NA, regex=True)
-    # Handle missing columns by passing
-    expected_columns = df.columns
-    df = df[expected_columns]
-    # Ensure the first column is 'wlbWellboreName'
-    if 'wlbName' in df.columns:
-        df = df.rename(columns={'wlbName': 'wlbWellboreName'})
+    # Make all column names lowercase to match the database
+    df.columns = df.columns.str.lower()
+    # Rename 'wlbname' to 'wlbwellborename' if it exists
+    if 'wlbname' in df.columns:
+        df = df.rename(columns={'wlbname': 'wlbwellborename'})
     return df
 
 def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFrame):
     try:
-        # Delete all existing data in the table
-        supabase.table(table_name).delete().neq('id', 0).execute()
+        # Delete all existing data in the table using wlbwellborename
+        supabase.table(table_name).delete().neq('wlbwellborename', '').execute()
 
         # Insert new data in chunks
         data = df.to_dict(orient='records')
         chunk_size = 500  # Adjust chunk size if necessary
         for i in range(0, len(data), chunk_size):
             chunk = data[i:i+chunk_size]
-            supabase.table(table_name).insert(chunk).execute()
+            # Insert data while handling missing values
+            supabase.table(table_name).insert(chunk, upsert=False).execute()
         logging.info(f"Successfully updated table '{table_name}' in Supabase.")
     except Exception as e:
         logging.error(f"Error replacing table '{table_name}' in Supabase: {e}", exc_info=True)
