@@ -50,9 +50,6 @@ class ReportRequest(BaseModel):
     latitude: float
     longitude: float
 
-class ScriptStatus(BaseModel):
-    script_name: str
-
 async def read_subprocess_output(process, script_name):
     try:
         stdout, stderr = process.communicate()
@@ -91,11 +88,15 @@ async def generate_report(request: ReportRequest):
         logging.error(f"Failed to start generate_report: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/scrape_and_store/")
-async def scrape_and_store():
+@app.post("/scripts/{script_name}/start/")
+async def start_script(script_name: str):
+    script_name = script_name.lower()
+    valid_scripts = ["scrape_and_store"]
+    if script_name not in valid_scripts:
+        raise HTTPException(status_code=400, detail=f"Invalid script name '{script_name}'.")
     with process_status_lock:
-        if process_status["scrape_and_store"]["running"]:
-            raise HTTPException(status_code=400, detail="Scraping and storing is already running.")
+        if process_status[script_name]["running"]:
+            raise HTTPException(status_code=400, detail=f"{script_name} is already running.")
     try:
         # Prepare environment variables
         env = os.environ.copy()
@@ -106,8 +107,11 @@ async def scrape_and_store():
         ])
 
         # Start the scraping script
+        script_paths = {
+            "scrape_and_store": "all_scrape_and_store_functions/scrape_and_store.py"
+        }
         process = subprocess.Popen(
-            [sys.executable, "all_scrape_and_store_functions/scrape_and_store.py"],
+            [sys.executable, script_paths[script_name]],
             cwd=os.path.dirname(os.path.abspath(__file__)),
             env=env,
             stdout=subprocess.DEVNULL,
@@ -116,31 +120,30 @@ async def scrape_and_store():
             start_new_session=True
         )
         with process_status_lock:
-            process_status["scrape_and_store"] = {"running": True, "pid": process.pid}
+            process_status[script_name] = {"running": True, "pid": process.pid}
         # Start monitoring the process
-        monitor_thread = threading.Thread(target=monitor_process, args=("scrape_and_store", process.pid))
+        monitor_thread = threading.Thread(target=monitor_process, args=(script_name, process.pid))
         monitor_thread.start()
-        return {"message": "Scraping and storing started.", "pid": process.pid}
+        return {"message": f"{script_name} started.", "pid": process.pid}
     except Exception as e:
-        logging.error(f"Failed to start scrape_and_store: {e}")
+        logging.error(f"Failed to start {script_name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.post("/script_status/")
-async def script_status(status_request: ScriptStatus):
-    script_name = status_request.script_name
+@app.get("/scripts/{script_name}/status/")
+async def get_script_status(script_name: str):
+    script_name = script_name.lower()
     with process_status_lock:
         if script_name not in process_status:
-            raise HTTPException(status_code=400, detail=f"No script named {script_name}.")
+            raise HTTPException(status_code=400, detail=f"No script named '{script_name}'.")
         status = process_status[script_name]
     return {"running": status["running"], "pid": status["pid"]}
 
-@app.post("/stop_script/")
-async def stop_script(status_request: ScriptStatus):
-    script_name = status_request.script_name
+@app.post("/scripts/{script_name}/stop/")
+async def stop_script(script_name: str):
+    script_name = script_name.lower()
     with process_status_lock:
         if script_name not in process_status:
-            raise HTTPException(status_code=400, detail=f"No script named {script_name}.")
+            raise HTTPException(status_code=400, detail=f"No script named '{script_name}'.")
         status = process_status[script_name]
     if status["running"] and status["pid"]:
         try:
@@ -224,3 +227,4 @@ async def database_status():
     except Exception as e:
         logging.error(f"Failed to run {script_name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
