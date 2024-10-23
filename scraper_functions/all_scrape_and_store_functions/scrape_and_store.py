@@ -162,9 +162,10 @@ def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFram
         chunk_size = 500
         for i in range(0, len(data), chunk_size):
             chunk = data[i:i+chunk_size]
-            insert_response = supabase.table(table_name).insert(chunk, upsert=False).execute()
-            if insert_response.error:
-                logging.error(f"Error inserting data into '{table_name}': {insert_response.error}")
+            try:
+                supabase.table(table_name).insert(chunk, upsert=False).execute()
+            except Exception as e:
+                logging.error(f"Error inserting data into '{table_name}': {e}")
                 break
         logging.info(f"Successfully updated table '{table_name}' in Supabase.")
     except Exception as e:
