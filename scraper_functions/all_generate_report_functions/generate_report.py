@@ -43,8 +43,9 @@ def main():
         return
 
     # Step 2.2: Use nearby wells for similarity search to get additional wells
+    nearby_well_names = [well['wlbwellborename'] for well in nearby_wells]
     similar_wells = data_retrieval.get_similar_wells(
-        supabase, nearby_wells, top_k=3
+        supabase, nearby_well_names, top_k=3
     )
     if not similar_wells:
         print("No similar wells found. Exiting.")
@@ -62,11 +63,8 @@ def main():
         print("Failed to retrieve similar well profiles. Exiting.")
         return
 
-    # Combine all well profiles for AI insights
-    all_well_profiles = nearby_well_profiles + similar_well_profiles
-
     # Stage 3: AI-Driven Insights
-    ai_insight_text = ai_insights.generate_ai_insights(all_well_profiles, input_lat, input_lon)
+    ai_insight_text = ai_insights.generate_ai_insights(nearby_well_profiles, similar_well_profiles, input_lat, input_lon)
     if not ai_insight_text:
         print("Failed to generate AI insights. Exiting.")
         return
