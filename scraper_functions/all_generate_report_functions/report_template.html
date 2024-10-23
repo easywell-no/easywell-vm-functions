@@ -8,49 +8,62 @@
         /* Global Styles */
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            margin: 20px;
+            margin: 30px;
             color: #2E3156;
             line-height: 1.5;
+        }
+
+        /* Logo */
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .logo img {
+            max-width: 500px;
+            height: auto;
         }
 
         h1, h2, h3 {
             color: #2E3156;
             page-break-after: avoid;
+            margin-top: 20px;
         }
 
         h1 {
-            font-size: 18pt;
+            font-size: 20pt;
             text-align: center;
             margin-bottom: 20px;
-            page-break-before: always;
+            /* Removed page-break-before to reduce excess page breaks */
         }
 
         h2 {
-            font-size: 14pt;
-            margin-top: 20px;
+            font-size: 16pt;
+            margin-top: 30px;
             border-bottom: 2px solid #FF5A24;
             padding-bottom: 5px;
-            page-break-before: always;
+            /* Adjusted to avoid too many page breaks */
         }
 
         h3 {
-            font-size: 12pt;
-            margin-top: 15px;
+            font-size: 14pt;
+            margin-top: 25px;
             color: #34495E;
-            page-break-before: always;
+            /* Adjusted to avoid too many page breaks */
         }
 
         p {
-            font-size: 10pt;
+            font-size: 11pt;
             text-align: justify;
             color: #2E3156;
             page-break-inside: avoid;
+            margin-bottom: 15px;
         }
 
         /* Well Profiles */
         .well-profile {
-            margin-bottom: 20px;
-            padding: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
             border: 1px solid #ccc;
             border-radius: 5px;
             background-color: #F9F9F9;
@@ -63,7 +76,7 @@
             margin-top: 20px;
             background-color: #E8F6F3;
             border-radius: 5px;
-            page-break-inside: avoid;
+            /* Removed page-break-inside to allow content to flow naturally */
         }
 
         /* Header and Footer */
@@ -88,7 +101,7 @@
         }
 
         .table-of-contents h2 {
-            font-size: 14pt;
+            font-size: 16pt;
             margin-top: 0;
         }
 
@@ -98,7 +111,7 @@
         }
 
         .table-of-contents li {
-            font-size: 10pt;
+            font-size: 11pt;
             margin-bottom: 5px;
         }
 
@@ -107,32 +120,27 @@
             text-decoration: none;
         }
 
-        /* Page Breaks */
-        .page-break {
-            page-break-before: always;
-        }
-
         /* Adjusted font sizes */
         h1 {
-            font-size: 16pt;
+            font-size: 20pt;
         }
 
         h2 {
-            font-size: 14pt;
+            font-size: 16pt;
         }
 
         h3 {
-            font-size: 12pt;
+            font-size: 14pt;
         }
 
         p, li {
-            font-size: 10pt;
+            font-size: 11pt;
         }
 
         /* Adjusted margins */
         body {
-            margin-left: 30px;
-            margin-right: 30px;
+            margin-left: 40px;
+            margin-right: 40px;
         }
 
         /* Remove link styling */
@@ -141,21 +149,39 @@
             text-decoration: none;
         }
 
-        /* Include page numbers in TOC */
-        .toc-page-number {
-            float: right;
+        /* Additional styles for a more natural look */
+        blockquote {
+            margin: 0 0 1em 0;
+            padding-left: 1em;
+            border-left: 4px solid #FF5A24;
+            color: #555;
         }
 
-        /* Clear floats */
-        .clearfix::after {
-            content: "";
-            clear: both;
-            display: table;
+        /* Ensure lists have consistent styling */
+        ul, ol {
+            margin-left: 20px;
+        }
+
+        /* Adjust bullet point spacing */
+        li {
+            margin-bottom: 5px;
+        }
+
+        /* Footer styling */
+        .footer {
+            text-align: center;
+            font-size: 9pt;
+            color: #999;
+            margin-top: 40px;
         }
 
     </style>
 </head>
 <body>
+    <div class="logo">
+        <img src="Logo.jpg" alt="Company Logo">
+    </div>
+
     <h1>{{ title }}</h1>
 
     <p><strong>Generated on:</strong> {{ generation_date }}</p>
@@ -163,16 +189,16 @@
     <h2>Table of Contents</h2>
     <div class="table-of-contents">
         <ul>
-            <li><a href="#executive-summary">Executive Summary</a><span class="toc-page-number">1</span></li>
-            <li><a href="#ai-analysis">AI-Driven Pre-Well Analysis Report</a><span class="toc-page-number">2</span></li>
-            <li><a href="#nearby-wells">Nearby Wells</a><span class="toc-page-number">3</span>
+            <li><a href="#executive-summary">Executive Summary</a></li>
+            <li><a href="#ai-analysis">AI-Driven Pre-Well Analysis Report</a></li>
+            <li><a href="#nearby-wells">Nearby Wells</a>
                 <ul>
                     {% for well_name in nearby_well_names %}
                     <li><a href="#nearby-{{ well_name }}">{{ well_name }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
-            <li><a href="#similar-wells">Similar Wells (Semantic Search)</a><span class="toc-page-number">4</span>
+            <li><a href="#similar-wells">Similar Wells (Semantic Search)</a>
                 <ul>
                     {% for well_name in similar_well_names %}
                     <li><a href="#similar-{{ well_name }}">{{ well_name }}</a></li>

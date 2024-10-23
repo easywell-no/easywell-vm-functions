@@ -16,7 +16,7 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return R * c
 
-def get_nearby_wells(supabase, user_latitude, user_longitude, radius_km=50, limit=3) -> List[Dict]:
+def get_nearby_wells(supabase, user_latitude, user_longitude, radius_km=80, limit=4) -> List[Dict]: #10k is a close well, 100k is far
     """
     Retrieves wells within a specified radius from the user's location.
     Only includes wells of type 'EXPLORATION'.
@@ -60,7 +60,7 @@ def get_nearby_wells(supabase, user_latitude, user_longitude, radius_km=50, limi
 
     return nearby_wells
 
-def get_similar_wells(supabase, well_names: List[str], top_k=3) -> List[Dict]:
+def get_similar_wells(supabase, well_names: List[str], top_k=4) -> List[Dict]:
     """
     Retrieves wells similar to the given wells using embeddings.
     Ensures that the returned wells are not in the original list.

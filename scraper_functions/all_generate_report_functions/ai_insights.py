@@ -52,7 +52,7 @@ Using the information from the wells provided below, generate a detailed and str
 
 2. **Wells Used in Analysis**: List of nearby wells and similar wells used in the analysis.
 
-3. **Expected Geological Formations**: Based **only on the nearby wells**, list the expected geological formations with approximate depths. Present this information in a clear manner, such as a list or table.
+3. **Expected Geological Formations**: Based **only on the nearby wells**, list the expected geological formations with approximate depths. Present this information in a clear manner, such as a list or table, you may also give a range max min based on these nearby wells, but use only depths which are listed in them.
 
 4. **Potential Risks**: Identify and elaborate on potential risks based on the data from nearby and similar wells. Tie each risk to specific wells and formations, including depths where available.
 
@@ -78,7 +78,7 @@ def generate_pre_well_analysis_report(prompt):
         response = openai.ChatCompletion.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=5000,  # Increased max_tokens to allow for more detailed output
+            max_tokens=8000,  # Increased max_tokens to allow for more detailed output
             temperature=0.5
         )
         report = response['choices'][0]['message']['content'].strip()
