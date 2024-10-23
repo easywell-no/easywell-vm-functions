@@ -41,7 +41,7 @@ rotating_handler.setLevel(logging.INFO)
 
 stream_handler = logging.StreamHandler(sys.stdout)
 stream_handler.setFormatter(log_formatter)
-stream_handler.setLevel(logging.WARNING)  # Changed from INFO to WARNING
+stream_handler.setLevel(logging.INFO)  # Set to INFO to display successful scrape messages
 
 logging.basicConfig(
     level=logging.INFO,
@@ -69,6 +69,9 @@ def fetch_csv(url):
         response = requests.get(url, verify=False)
         response.raise_for_status()
         content = response.content.decode('utf-8')
+        if content.lstrip().startswith('<!DOCTYPE html>'):
+            logging.error(f"Received HTML content instead of CSV from {url}")
+            return None
         df = pd.read_csv(io.StringIO(content), encoding='utf-8', on_bad_lines='skip')
         return df
     except requests.exceptions.SSLError as ssl_err:
@@ -139,7 +142,12 @@ def prepare_data(df, table_name):
                 df[col] = df[col].apply(lambda x: int(float(x)) if pd.notnull(x) else None)
     if table_name == 'well_mud':
         # Remove duplicates based on primary key
-        df = df.drop_duplicates(subset=['wlbwellborename', 'wlbmd', 'wlbmuddatemeasured'])
+        required_columns = ['wlbwellborename', 'wlbmd', 'wlbmuddatemeasured']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            logging.error(f"Missing columns {missing_columns} in 'well_mud' data")
+        else:
+            df = df.drop_duplicates(subset=required_columns)
     # Replace NaN and NaT with None
     df = df.astype(object).where(pd.notnull(df), None)
     return df
@@ -148,7 +156,7 @@ def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFram
     try:
         # Delete all existing data in the table
         delete_response = supabase.table(table_name).delete().neq('wlbwellborename', '').execute()
-        logging.info(f"Deleted records from '{table_name}': {delete_response.data}")
+        logging.info(f"Deleted records from '{table_name}'")
         # Insert new data in chunks
         data = df.to_dict(orient='records')
         chunk_size = 500
@@ -166,17 +174,18 @@ def main():
     try:
         # Define URLs
         urls = {
-            'well_history': 'https://factpages.npd.no/ReportServer?/FactPages/external_table_wellbore_history&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en',
-            'well_coordinates': 'https://factpages.npd.no/ReportServer?/FactPages/external_table_wellbore_coordinates&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en',
-            'well_mud': 'https://factpages.npd.no/ReportServer?/FactPages/external_table_wellbore_mud&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en',
-            'well_casings': 'https://factpages.npd.no/ReportServer?/FactPages/external_table_wellbore_casing_and_lot&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en',
-            'well_lito': 'https://factpages.npd.no/ReportServer?/FactPages/external_table_wellbore_formation_top&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en'
+            'well_history': 'https://factpages.npd.no/ReportServer?/FactPages/TableView/wellbore_all&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en',
+            'well_coordinates': 'https://factpages.npd.no/ReportServer?/FactPages/TableView/wellbore_coordinates_all&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en',
+            'well_mud': 'https://factpages.npd.no/ReportServer?/FactPages/TableView/wellbore_mud_all&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en',
+            'well_casings': 'https://factpages.npd.no/ReportServer?/FactPages/TableView/wellbore_casing_and_lot_all&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en',
+            'well_lito': 'https://factpages.npd.no/ReportServer?/FactPages/TableView/wellbore_formation_top_all&rc:Toolbar=false&rc:Parameters=f&rs:Format=CSV&IpAddress=not_used&CultureCode=en'
         }
 
         for table_name, url in urls.items():
             logging.info(f"Processing '{table_name}'...")
             df = fetch_csv(url)
             if df is not None:
+                logging.info(f"Successfully fetched CSV data for '{table_name}'")
                 df = prepare_data(df, table_name)
                 replace_table_in_supabase(supabase, table_name, df)
             else:
