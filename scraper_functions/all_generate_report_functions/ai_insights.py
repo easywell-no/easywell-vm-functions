@@ -1,4 +1,4 @@
-# all_generate_report_functions/ai_insights.py
+# ai_insights.py
 
 import logging
 import openai
@@ -62,7 +62,12 @@ def construct_combined_prompt(combined_profiles, user_location):
     prompt = f"""
 You are an expert petroleum engineer specializing in drilling operations.
 
-Using the information from the wells provided below, generate a pre-well analysis report for a new drilling location at latitude {user_location['latitude']} and longitude {user_location['longitude']}. The report should identify potential risks, expected geological formations, and any drilling challenges based on the data from these wells.
+Using the information from the wells provided below, generate a detailed pre-well analysis report for a new drilling location at latitude {user_location['latitude']} and longitude {user_location['longitude']}. The report should:
+
+- Identify potential risks.
+- Describe expected geological formations.
+- Highlight any drilling challenges based on the data from these wells.
+- Provide recommendations for safe and efficient drilling operations.
 
 Well Summaries:
 {context}
@@ -76,7 +81,7 @@ def generate_pre_well_analysis_report(prompt):
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1000,  # Adjust based on desired report length
+            max_tokens=1500,  # Adjusted for a more detailed report
             temperature=0.7,
             stop=["\n\n", "END"]
         )

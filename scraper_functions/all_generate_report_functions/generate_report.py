@@ -78,28 +78,40 @@ def main():
         similar_wells = data_retrieval.get_similar_wells(
             supabase, nearby_wells, top_k=5
         )
+        if not similar_wells:
+            logging.error("No similar wells found. Exiting.")
+            return
         logging.info(f"Retrieved {len(similar_wells)} similar wells.")
     except Exception as e:
         logging.error(f"Error retrieving similar wells: {e}")
         return
 
-    # Step 2.3: Combine wells and ensure no duplicates
-    all_well_names = list(set(nearby_wells + similar_wells))
-    logging.info(f"Total wells to use in report: {len(all_well_names)}")
-
-    # Step 2.4: Retrieve well profiles
+    # Stage 2.3: Retrieve well profiles for nearby wells
     try:
-        well_profiles = data_retrieval.get_well_profiles(supabase, all_well_names)
-        if not well_profiles:
-            logging.error("Failed to retrieve well profiles. Exiting.")
+        nearby_well_profiles = data_retrieval.get_well_profiles(supabase, nearby_wells)
+        if not nearby_well_profiles:
+            logging.error("Failed to retrieve nearby well profiles. Exiting.")
             return
     except Exception as e:
-        logging.error(f"Error retrieving well profiles: {e}")
+        logging.error(f"Error retrieving nearby well profiles: {e}")
         return
+
+    # Retrieve well profiles for similar wells
+    try:
+        similar_well_profiles = data_retrieval.get_well_profiles(supabase, similar_wells)
+        if not similar_well_profiles:
+            logging.error("Failed to retrieve similar well profiles. Exiting.")
+            return
+    except Exception as e:
+        logging.error(f"Error retrieving similar well profiles: {e}")
+        return
+
+    # Combine all well profiles for AI insights
+    all_well_profiles = nearby_well_profiles + similar_well_profiles
 
     # Stage 3: AI-Driven Insights
     try:
-        ai_insight_text = ai_insights.generate_ai_insights(well_profiles, input_lat, input_lon)
+        ai_insight_text = ai_insights.generate_ai_insights(all_well_profiles, input_lat, input_lon)
         if not ai_insight_text:
             logging.error("Failed to generate AI insights. Exiting.")
             return
@@ -109,7 +121,11 @@ def main():
 
     # Stage 4: Report Compilation
     try:
-        report = report_compilation.compile_report(well_profiles, ai_insight_text)
+        report = report_compilation.compile_report(
+            nearby_well_profiles,
+            similar_well_profiles,
+            ai_insight_text
+        )
         if not report:
             logging.error("Failed to compile the report. Exiting.")
             return

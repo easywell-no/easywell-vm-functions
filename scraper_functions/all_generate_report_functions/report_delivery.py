@@ -19,10 +19,11 @@ def deliver_report(report: Dict):
 
     # Get the directory of the current script
     current_dir = os.path.dirname(os.path.abspath(__file__))
+    template_path = os.path.join(current_dir, 'templates')
 
-    # Setup Jinja2 Environment to load templates from the current directory
+    # Setup Jinja2 Environment to load templates from the 'templates' directory
     env = Environment(
-        loader=FileSystemLoader(searchpath=current_dir),
+        loader=FileSystemLoader(searchpath=template_path),
         autoescape=select_autoescape(['html', 'xml'])
     )
 
@@ -33,16 +34,21 @@ def deliver_report(report: Dict):
         return
 
     # Prepare transformed wells data
-    transformed_wells = {}
-    for well_name, data in report.get('wells', {}).items():
-        transformed_wells[well_name] = data
+    transformed_nearby_wells = {}
+    for well_name, data in report.get('nearby_wells', {}).items():
+        transformed_nearby_wells[well_name] = data
+
+    transformed_similar_wells = {}
+    for well_name, data in report.get('similar_wells', {}).items():
+        transformed_similar_wells[well_name] = data
 
     # Render the HTML content using the template
     try:
         rendered_html = template.render(
             title=report.get('title', 'Pre-Well Drilling Report'),
             summary=report.get('summary', ''),
-            wells=transformed_wells,
+            nearby_wells=transformed_nearby_wells,
+            similar_wells=transformed_similar_wells,
             ai_insights=convert_markdown_to_html(report.get('ai_insights', '')),
             generation_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         )

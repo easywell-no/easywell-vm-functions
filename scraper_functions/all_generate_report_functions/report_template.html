@@ -4,27 +4,101 @@
     <meta charset="UTF-8">
     <title>{{ title }}</title>
     <style>
-        /* Add your CSS styles here */
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1, h2, h3 { color: #2e6c80; }
-        .well-section { margin-bottom: 20px; }
-        .ai-insights { background-color: #f0f8ff; padding: 10px; }
+        /* Global Styles */
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            margin: 40px;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3 {
+            color: #2E4053;
+        }
+
+        h1 {
+            font-size: 28px;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-top: 40px;
+            border-bottom: 2px solid #2E4053;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 18px;
+            margin-top: 30px;
+            color: #34495E;
+        }
+
+        p {
+            font-size: 14px;
+            text-align: justify;
+        }
+
+        /* Well Profiles */
+        .well-profile {
+            margin-bottom: 40px;
+        }
+
+        /* AI Insights */
+        .ai-insights {
+            background-color: #F9F9F9;
+            padding: 20px;
+            border-left: 4px solid #2E4053;
+            margin-top: 30px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-top: 50px;
+        }
+
+        /* Page Breaks */
+        .page-break {
+            page-break-before: always;
+        }
     </style>
 </head>
 <body>
     <h1>{{ title }}</h1>
+
+    <p><strong>Generated on:</strong> {{ generation_date }}</p>
+
+    <h2>Executive Summary</h2>
     <p>{{ summary }}</p>
-    <h2>AI-Driven Insights</h2>
+
+    <h2>AI-Driven Pre-Well Analysis Report</h2>
     <div class="ai-insights">
         {{ ai_insights | safe }}
     </div>
-    <h2>Well Profiles</h2>
-    {% for well_name, data in wells.items() %}
-    <div class="well-section">
+
+    <h2>Nearby Wells</h2>
+    {% for well_name, data in nearby_wells.items() %}
+    <div class="well-profile">
         <h3>Well {{ well_name }}</h3>
-        <pre>{{ data['well_profile'] }}</pre>
+        <p>{{ data.well_profile }}</p>
     </div>
     {% endfor %}
-    <p>Report generated on: {{ generation_date }}</p>
+
+    <h2>Similar Wells (Semantic Search)</h2>
+    <p>The following wells were selected based on semantic similarity to the nearby wells.</p>
+    {% for well_name, data in similar_wells.items() %}
+    <div class="well-profile">
+        <h3>Well {{ well_name }}</h3>
+        <p>{{ data.well_profile }}</p>
+    </div>
+    {% endfor %}
+
+    <div class="footer">
+        &copy; {{ generation_date[:4] }} EasyWell. All rights reserved.
+    </div>
 </body>
 </html>
