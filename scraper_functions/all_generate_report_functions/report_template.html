@@ -122,6 +122,39 @@
             margin-top: 40px;
         }
 
+        /* Page Breaks */
+        .page-break {
+            page-break-before: always;
+        }
+
+        /* TOC styles */
+        .table-of-contents {
+            margin-top: 20px;
+        }
+
+        .table-of-contents h2 {
+            font-size: 18pt;
+            margin-top: 0;
+        }
+
+        .table-of-contents ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .table-of-contents li {
+            font-size: 12pt;
+            margin-bottom: 5px;
+        }
+
+        .table-of-contents a {
+            color: #2E3156;
+            text-decoration: none;
+        }
+
+        .toc-page-number {
+            float: right;
+        }
     </style>
 </head>
 <body>
@@ -133,13 +166,46 @@
 
     <p><strong>Generated on:</strong> {{ generation_date }}</p>
 
-    <!-- WeasyPrint TOC Placeholder -->
-    <!-- TOC -->
+    <h2>Table of Contents</h2>
+    <div class="table-of-contents">
+        <ul class="toc-1">
+            <li><a href="#executive-summary">Executive Summary</a>
+                <span class="toc-page-number">{{ toc_page_numbers['executive-summary'] }}</span>
+            </li>
+            <li><a href="#ai-analysis">AI-Driven Pre-Well Analysis Report</a>
+                <span class="toc-page-number">{{ toc_page_numbers['ai-analysis'] }}</span>
+            </li>
+            <li><a href="#nearby-wells">Nearby Wells</a>
+                <span class="toc-page-number">{{ toc_page_numbers['nearby-wells'] }}</span>
+                <ul class="toc-2">
+                    {% for well_name in nearby_well_names %}
+                    <li><a href="#nearby-{{ well_name }}">{{ well_name }}</a>
+                        <span class="toc-page-number">{{ toc_page_numbers['nearby-' + well_name] }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </li>
+            <li><a href="#similar-wells">Similar Wells (Semantic Search)</a>
+                <span class="toc-page-number">{{ toc_page_numbers['similar-wells'] }}</span>
+                <ul class="toc-2">
+                    {% for well_name in similar_well_names %}
+                    <li><a href="#similar-{{ well_name }}">{{ well_name }}</a>
+                        <span class="toc-page-number">{{ toc_page_numbers['similar-' + well_name] }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+    </div>
 
     <h2 id="executive-summary">Executive Summary</h2>
     <p>
-        Welcome to our Pre-Well Drilling Analysis Report. At WellVector.ai, we leverage cutting-edge AI technology to provide comprehensive analyses for your drilling operations. Our platform synthesizes data from multiple sources to offer insights that are both deep and actionable. The AI-generated content highlighted in this report showcases the power and potential of our technology in revolutionizing the drilling industry.
+        This report presents a comprehensive analysis of the proposed drilling location, utilizing advanced AI-driven techniques. The analysis is based on data from nearby wells and wells identified through semantic similarity, providing insights into potential risks, geological formations, and recommended best practices. 
+        <br><br>
+        Our AI technology leverages deep learning models to process and analyze vast amounts of well data. The AI-generated insights, clearly indicated in this report, help operators make informed decisions, reduce risks, and optimize drilling performance.
     </p>
+
+    <div class="page-break"></div> <!-- Ensures AI Analysis starts on a new page -->
 
     <h2 id="ai-analysis">AI-Driven Pre-Well Analysis Report</h2>
     <div class="ai-insights">
