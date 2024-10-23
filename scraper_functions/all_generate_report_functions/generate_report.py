@@ -4,7 +4,7 @@ import logging
 import os
 
 # Correctly import the get_supabase_client function
-from utils.get_supabase_client import get_supabase_client
+from get_supabase_client import get_supabase_client
 
 # ------------------------
 # Configure Logging
