@@ -150,18 +150,20 @@ def prepare_data(df, table_name):
 
 def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFrame):
     try:
-        # Delete all existing data in the table
+        # Delete all existing data in the table if necessary (optional)
         delete_response = supabase.table(table_name).delete().neq('wlbwellborename', '').execute()
         logging.info(f"Deleted records from '{table_name}'")
+        
         # Insert new data in chunks
         data = df.to_dict(orient='records')
         chunk_size = 500
         for i in range(0, len(data), chunk_size):
             chunk = data[i:i+chunk_size]
             try:
-                supabase.table(table_name).insert(chunk, upsert=False).execute()
+                # Use upsert=True to avoid primary key conflicts
+                supabase.table(table_name).upsert(chunk).execute()
             except Exception as e:
-                logging.error(f"Error inserting data into '{table_name}': {e}")
+                logging.error(f"Error inserting/upserting data into '{table_name}': {e}")
                 continue
         logging.info(f"Successfully updated table '{table_name}' in Supabase.")
     except Exception as e:
