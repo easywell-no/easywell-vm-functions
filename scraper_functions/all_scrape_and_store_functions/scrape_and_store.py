@@ -132,13 +132,13 @@ def prepare_data(df, table_name):
             logging.error(f"Error parsing date column '{date_col}': {e}", exc_info=True)
     # Handle numeric columns
     if table_name == 'well_casings':
-        # Removed 'wlbcasingdiameter' from float_columns
+        # Treat 'wlbcasingdiameter' as string, so exclude it from float conversion
         float_columns = ['wlbcasingdepth', 'wlbholediameter', 'wlbholedepth', 'wlblotmuddencity']
         for col in float_columns:
             if col in df.columns:
                 df[col] = df[col].apply(convert_to_float)
         # Drop duplicates based on primary key columns
-        df = df.drop_duplicates(subset=['wlbwellborename', 'wlbcasingtype', 'wlbcasingdepth'])
+        df = df.drop_duplicates(subset=['wlbwellborename', 'wlbcasingtype', 'wlbcasingdiameter', 'wlbcasingdepth'])
         # Filter out rows where required columns are null
         df = df.dropna(subset=['wlbcasingtype', 'wlbcasingdepth'])
     if table_name == 'well_lito':
@@ -169,9 +169,18 @@ def prepare_data(df, table_name):
 
 def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFrame):
     try:
-        # Delete all existing data in the table
-        delete_response = supabase.table(table_name).delete().execute()
-        logging.info(f"Deleted records from '{table_name}'")
+        # Check if 'wlbwellborename' exists in the DataFrame
+        if 'wlbwellborename' in df.columns:
+            # Delete existing data where 'wlbwellborename' is not empty
+            delete_response = supabase.table(table_name).delete().neq('wlbwellborename', '').execute()
+            if delete_response.status_code < 400:
+                logging.info(f"Deleted records from '{table_name}'")
+            else:
+                logging.error(f"Error deleting records from '{table_name}': {delete_response.json()}")
+        else:
+            # Log a warning and skip deletion if 'wlbwellborename' does not exist
+            logging.warning(f"'wlbwellborename' column not found in '{table_name}'. Skipping deletion.")
+
         # Insert new data in chunks
         data = df.to_dict(orient='records')
         chunk_size = 500
@@ -209,7 +218,7 @@ def main():
         logging.info("All CSV data updates completed successfully.")
     except Exception as e:
         logging.error(f"An error occurred during CSV data updates: {e}", exc_info=True)
-    
+
     try:
         # Cleanup process
         cleanup()
