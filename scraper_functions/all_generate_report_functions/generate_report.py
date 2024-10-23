@@ -3,8 +3,17 @@
 import logging
 import os
 
+# Importing modules from all_generate_report_functions
+from all_generate_report_functions import (
+    input_handler,
+    data_retrieval,
+    ai_insights,
+    report_compilation,
+    report_delivery
+)
+
 # Correctly import the get_supabase_client function
-from get_supabase_client import get_supabase_client
+from utils.get_supabase_client import get_supabase_client
 
 # ------------------------
 # Configure Logging
