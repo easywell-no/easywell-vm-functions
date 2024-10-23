@@ -44,7 +44,7 @@ logging.basicConfig(
 
 # Load Supabase credentials from environment variables
 SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
 
 if SUPABASE_URL is None or SUPABASE_KEY is None:
     logging.error("Environment variables SUPABASE_URL or SUPABASE_KEY not set.")
