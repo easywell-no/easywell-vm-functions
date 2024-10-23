@@ -49,13 +49,20 @@ You are an expert petroleum engineer specializing in drilling operations.
 Using the information from the wells provided below, generate a detailed and structured pre-well analysis report for a new drilling location at latitude {user_location['latitude']} and longitude {user_location['longitude']}. The report should be in **Markdown** format and include the following sections:
 
 1. **Introduction**: Brief overview of the proposed drilling site.
+
 2. **Wells Used in Analysis**: List of nearby wells and similar wells used in the analysis.
-3. **Potential Risks**: Identify and elaborate on potential risks based on the data from nearby and similar wells.
-4. **Expected Geological Formations**: Describe the expected geological formations and any associated challenges.
-5. **Drilling Challenges**: Highlight any drilling challenges observed in the nearby wells, including issues like lost circulation, stuck pipe incidents, high-pressure zones, etc.
-6. **Comparison of Similar Wells**: Explain why the wells in the semantic search are similar to the nearby wells and how they are relevant to the proposed drilling operation.
-7. **Recommendations**: Provide actionable recommendations for safe and efficient drilling operations, considering the identified risks and challenges.
-8. **Conclusion**: Summarize the key findings and emphasize critical points for the drilling team.
+
+3. **Expected Geological Formations**: Based **only on the nearby wells**, list the expected geological formations with approximate depths. Present this information in a clear manner, such as a list or table.
+
+4. **Potential Risks**: Identify and elaborate on potential risks based on the data from nearby and similar wells. Tie each risk to specific wells and formations, including depths where available.
+
+5. **Drilling Challenges**: Highlight any drilling challenges observed in the nearby wells, including issues like lost circulation, stuck pipe incidents, high-pressure zones, etc. Reference the specific wells and formations where these challenges occurred.
+
+6. **Comparison of Similar Wells**: Explain why the wells in the semantic search are similar to the nearby wells and how they are relevant to the proposed drilling operation. Use logical reasoning, such as similar formations, drilling conditions, or proximity.
+
+7. **Recommendations**: Provide actionable recommendations for safe and efficient drilling operations, tying each recommendation to specific formations, depths, or situations, and referencing relevant wells.
+
+8. **Conclusion**: Provide a detailed summary of the key findings and emphasize critical points for the drilling team.
 
 Ensure that the report references specific wells and data where appropriate, and provides insights into why certain wells are more relevant to the proposed drilling operation.
 
@@ -71,8 +78,8 @@ def generate_pre_well_analysis_report(prompt):
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=3000,
-            temperature=0.7
+            max_tokens=7000,  # Increased max_tokens to allow for more detailed output
+            temperature=0.5
         )
         report = response['choices'][0]['message']['content'].strip()
         return report
