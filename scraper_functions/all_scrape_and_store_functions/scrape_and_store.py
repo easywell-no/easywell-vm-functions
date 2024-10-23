@@ -11,7 +11,6 @@ from dateutil import parser
 import re
 from fractions import Fraction
 import urllib3
-import numpy as np  # Added this import
 
 # Suppress SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -107,14 +106,6 @@ def convert_to_float(value):
             return float(whole_part) + float(Fraction(frac_part))
         elif re.match(r'^\d+/\d+$', value):
             return float(Fraction(value))
-        elif 'x' in value:
-            # If value contains 'x', split and take the first part
-            parts = value.split('x')
-            return convert_to_float(parts[0])
-        elif re.match(r'^\d+\s+\d+$', value):
-            # Replace space with '.'
-            new_value = value.replace(' ', '.')
-            return float(new_value)
         else:
             # Remove any extra spaces and commas
             value = value.replace(',', '').strip()
@@ -144,8 +135,6 @@ def prepare_data(df, table_name):
         for col in float_columns:
             if col in df.columns:
                 df[col] = df[col].apply(convert_to_float)
-        # Drop duplicates based on primary key columns
-        df = df.drop_duplicates(subset=['wlbwellborename', 'wlbcasingtype', 'wlbcasingdiameter', 'wlbcasingdepth'])
         # Filter out rows where required columns are null
         df = df.dropna(subset=['wlbcasingtype', 'wlbcasingdiameter', 'wlbcasingdepth'])
     if table_name == 'well_lito':
@@ -170,14 +159,14 @@ def prepare_data(df, table_name):
             df = df.drop_duplicates(subset=required_columns)
         # Filter out rows where required columns are null
         df = df.dropna(subset=['wlbwellborename', 'wlbmd', 'wlbmuddatemeasured'])
-    # Replace pd.NA, pd.NaT, and np.nan with None
-    df = df.replace({pd.NA: None, pd.NaT: None, np.nan: None})
+    # Replace pd.NA and pd.NaT with None
+    df = df.replace({pd.NA: None, pd.NaT: None})
     return df
 
 def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFrame):
     try:
         # Delete all existing data in the table
-        delete_response = supabase.table(table_name).delete().execute()
+        delete_response = supabase.table(table_name).delete().neq('wlbwellborename', '').execute()
         logging.info(f"Deleted records from '{table_name}'")
         # Insert new data in chunks
         data = df.to_dict(orient='records')
