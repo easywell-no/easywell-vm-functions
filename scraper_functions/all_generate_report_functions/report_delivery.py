@@ -19,9 +19,10 @@ def deliver_report(report: Dict):
 
     # Get the directory of the current script
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    template_path = os.path.join(current_dir, 'templates')
+    # Since all files are in the same folder, use current_dir as the template path
+    template_path = current_dir
 
-    # Setup Jinja2 Environment to load templates from the 'templates' directory
+    # Setup Jinja2 Environment to load templates from the current directory
     env = Environment(
         loader=FileSystemLoader(searchpath=template_path),
         autoescape=select_autoescape(['html', 'xml'])

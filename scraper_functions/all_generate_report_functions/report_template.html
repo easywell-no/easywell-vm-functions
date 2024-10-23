@@ -5,52 +5,64 @@
     <title>{{ title }}</title>
     <style>
         /* Global Styles */
+        @font-face {
+            font-family: 'Figtree';
+            src: url('https://fonts.googleapis.com/css2?family=Figtree&display=swap');
+        }
+
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-family: 'Figtree', sans-serif;
             margin: 40px;
-            color: #333;
+            color: #2E3156; /* primary color */
             line-height: 1.6;
+            background-color: #F5F5F8; /* app-white */
         }
 
         h1, h2, h3 {
-            color: #2E4053;
+            color: #2E3156; /* primary color */
         }
 
         h1 {
-            font-size: 28px;
+            font-size: 32px;
             text-align: center;
             margin-bottom: 40px;
         }
 
         h2 {
-            font-size: 22px;
+            font-size: 24px;
             margin-top: 40px;
-            border-bottom: 2px solid #2E4053;
+            border-bottom: 2px solid #FF5A24; /* secondary color */
             padding-bottom: 10px;
         }
 
         h3 {
-            font-size: 18px;
+            font-size: 20px;
             margin-top: 30px;
             color: #34495E;
         }
 
         p {
-            font-size: 14px;
+            font-size: 16px;
             text-align: justify;
+            color: #2E3156; /* primary color */
         }
 
         /* Well Profiles */
         .well-profile {
             margin-bottom: 40px;
+            background-color: #FFFFFF;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
         }
 
         /* AI Insights */
         .ai-insights {
-            background-color: #F9F9F9;
+            background-color: #FFFFFF;
             padding: 20px;
-            border-left: 4px solid #2E4053;
+            border-left: 4px solid #FF5A24; /* secondary color */
             margin-top: 30px;
+            border-radius: 10px;
         }
 
         /* Footer */
@@ -65,10 +77,57 @@
         .page-break {
             page-break-before: always;
         }
+
+        /* Hyperlinks */
+        a {
+            color: #FF5A24; /* secondary color */
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Blockquotes */
+        blockquote {
+            border-left: 4px solid #FF5A24; /* secondary color */
+            padding-left: 20px;
+            color: #2E3156; /* primary color */
+            font-style: italic;
+        }
+
+        /* Dark Mode Styles */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #121212; /* dark-background */
+                color: #F5F5F8; /* app-white */
+            }
+            h1, h2, h3, p, a, blockquote {
+                color: #F5F5F8; /* app-white */
+            }
+            .well-profile, .ai-insights {
+                background-color: #2E3156; /* dark-primary */
+                color: #F5F5F8; /* app-white */
+            }
+            .footer {
+                color: #777;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 1s ease-out forwards;
+        }
+
     </style>
 </head>
 <body>
-    <h1>{{ title }}</h1>
+    <h1 class="fade-in">{{ title }}</h1>
 
     <p><strong>Generated on:</strong> {{ generation_date }}</p>
 
