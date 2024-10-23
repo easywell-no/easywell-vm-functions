@@ -76,7 +76,7 @@ Pre-Well Analysis Report:
 def generate_pre_well_analysis_report(prompt):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=5000,  # Increased max_tokens to allow for more detailed output
             temperature=0.5
