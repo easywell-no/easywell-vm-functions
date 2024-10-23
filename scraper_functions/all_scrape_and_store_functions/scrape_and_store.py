@@ -41,7 +41,7 @@ rotating_handler.setLevel(logging.INFO)
 
 stream_handler = logging.StreamHandler(sys.stdout)
 stream_handler.setFormatter(log_formatter)
-stream_handler.setLevel(logging.INFO)
+stream_handler.setLevel(logging.WARNING)  # Changed from INFO to WARNING
 
 logging.basicConfig(
     level=logging.INFO,
