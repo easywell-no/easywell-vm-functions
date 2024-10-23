@@ -37,11 +37,15 @@ def deliver_report(report: Dict):
     # Prepare transformed wells data
     transformed_nearby_wells = {}
     for well_name, data in report.get('nearby_wells', {}).items():
-        transformed_nearby_wells[well_name] = data
+        transformed_nearby_wells[well_name] = {
+            'well_profile': convert_markdown_to_html(data['well_profile'])
+        }
 
     transformed_similar_wells = {}
     for well_name, data in report.get('similar_wells', {}).items():
-        transformed_similar_wells[well_name] = data
+        transformed_similar_wells[well_name] = {
+            'well_profile': convert_markdown_to_html(data['well_profile'])
+        }
 
     # Render the HTML content using the template
     try:

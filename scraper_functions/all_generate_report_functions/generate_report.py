@@ -27,13 +27,13 @@ if not os.path.exists('logs'):
 
 logging.basicConfig(
     filename='logs/generate_report.log',
-    level=logging.INFO,
+    level=logging.DEBUG,  # Set to DEBUG to capture detailed logs
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# Optionally, also log to console
+# Also log to console
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
+console_handler.setLevel(logging.DEBUG)  # Set to DEBUG
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(formatter)
 logging.getLogger().addHandler(console_handler)
@@ -60,10 +60,10 @@ def main():
     input_lat, input_lon = user_input['latitude'], user_input['longitude']
 
     # Stage 2: Data Retrieval
-    # Step 2.1: Get 5 closest wells based on location
+    # Step 2.1: Get 3 closest wells based on location
     try:
         nearby_wells = data_retrieval.get_nearby_wells(
-            supabase, input_lat, input_lon, radius_km=50, limit=5
+            supabase, input_lat, input_lon, radius_km=50, limit=3
         )
         if not nearby_wells:
             logging.error("No nearby wells found. Exiting.")
@@ -76,7 +76,7 @@ def main():
     # Step 2.2: Use nearby wells for similarity search to get additional wells
     try:
         similar_wells = data_retrieval.get_similar_wells(
-            supabase, nearby_wells, top_k=5
+            supabase, nearby_wells, top_k=3
         )
         if not similar_wells:
             logging.error("No similar wells found. Exiting.")

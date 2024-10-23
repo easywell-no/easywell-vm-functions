@@ -11,28 +11,29 @@ parent_dir = os.path.dirname(current_dir)
 utils_dir = os.path.join(parent_dir, 'utils')
 sys.path.append(utils_dir)
 
-from get_embedding import get_embedding
-
 # Load environment variables
 from dotenv import load_dotenv
 load_dotenv()
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+if not OPENAI_API_KEY:
+    logging.error("OPENAI_API_KEY is not set. Please set it in your environment variables.")
 openai.api_key = OPENAI_API_KEY
 
-def summarize_text(text, max_tokens=150):
+def summarize_text(text, max_tokens=100):
     """
     Summarizes the given text using OpenAI's summarization capability.
     """
     prompt = f"Summarize the following well profile:\n\n{text}\n\nSummary:"
     try:
+        logging.info("Summarizing text with OpenAI API.")
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=max_tokens,
-            temperature=0.5,
-            stop=["\n\n"]
+            temperature=0.5
         )
         summary = response['choices'][0]['message']['content'].strip()
+        logging.info(f"Summary generated for well profile: {summary[:100]}...")
         return summary
     except Exception as e:
         logging.error(f"Error summarizing text: {e}")
@@ -41,6 +42,7 @@ def summarize_text(text, max_tokens=150):
 def get_summarized_well_profiles(well_profiles):
     summarized_profiles = []
     for profile in well_profiles:
+        logging.info(f"Summarizing well profile for well: {profile['wlbwellborename']}")
         summary = summarize_text(profile['well_profile'])
         summarized_profiles.append({
             'wlbwellborename': profile['wlbwellborename'],
@@ -74,18 +76,20 @@ Well Summaries:
 
 Pre-Well Analysis Report:
 """
+    logging.debug(f"Constructed prompt length: {len(prompt)} characters.")
     return prompt.strip()
 
 def generate_pre_well_analysis_report(prompt):
     try:
+        logging.info("Generating pre-well analysis report with OpenAI API.")
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1500,  # Adjusted for a more detailed report
-            temperature=0.7,
-            stop=["\n\n", "END"]
+            max_tokens=1000,  # Adjusted for a more detailed report
+            temperature=0.7
         )
         report = response['choices'][0]['message']['content'].strip()
+        logging.info(f"AI-generated report length: {len(report)} characters.")
         return report
     except Exception as e:
         logging.error(f"Error generating pre-well analysis report: {e}")
@@ -95,14 +99,21 @@ def generate_ai_insights(well_profiles, input_lat, input_lon):
     """
     Generates AI-driven insights using the well profiles.
     """
+    logging.info("Starting AI insights generation.")
     # Summarize well profiles
     summarized_profiles = get_summarized_well_profiles(well_profiles)
+    logging.info("Well profiles summarized.")
 
     # Construct prompt
     user_location = {'latitude': input_lat, 'longitude': input_lon}
     prompt = construct_combined_prompt(summarized_profiles, user_location)
+    logging.info("Prompt constructed for AI insights.")
+
+    # Log the prompt length
+    logging.debug(f"AI prompt length: {len(prompt)} characters.")
 
     # Generate report
     report = generate_pre_well_analysis_report(prompt)
+    logging.info("AI insights generated.")
 
     return report

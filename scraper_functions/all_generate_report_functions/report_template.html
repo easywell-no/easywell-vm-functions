@@ -5,17 +5,11 @@
     <title>{{ title }}</title>
     <style>
         /* Global Styles */
-        @font-face {
-            font-family: 'Figtree';
-            src: url('https://fonts.googleapis.com/css2?family=Figtree&display=swap');
-        }
-
         body {
-            font-family: 'Figtree', sans-serif;
-            margin: 40px;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            margin: 20px; /* Reduced margins */
             color: #2E3156; /* primary color */
-            line-height: 1.6;
-            background-color: #F5F5F8; /* app-white */
+            line-height: 1.4;
         }
 
         h1, h2, h3 {
@@ -23,54 +17,50 @@
         }
 
         h1 {
-            font-size: 32px;
+            font-size: 16pt; /* Adjusted font size */
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 20px;
         }
 
         h2 {
-            font-size: 24px;
-            margin-top: 40px;
-            border-bottom: 2px solid #FF5A24; /* secondary color */
-            padding-bottom: 10px;
+            font-size: 14pt; /* Adjusted font size */
+            margin-top: 20px;
+            border-bottom: 1px solid #FF5A24; /* secondary color */
+            padding-bottom: 5px;
         }
 
         h3 {
-            font-size: 20px;
-            margin-top: 30px;
+            font-size: 12pt; /* Adjusted font size */
+            margin-top: 15px;
             color: #34495E;
         }
 
         p {
-            font-size: 16px;
+            font-size: 10pt; /* Adjusted font size */
             text-align: justify;
             color: #2E3156; /* primary color */
         }
 
         /* Well Profiles */
         .well-profile {
-            margin-bottom: 40px;
-            background-color: #FFFFFF;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
         }
 
         /* AI Insights */
         .ai-insights {
-            background-color: #FFFFFF;
-            padding: 20px;
-            border-left: 4px solid #FF5A24; /* secondary color */
-            margin-top: 30px;
-            border-radius: 10px;
+            padding: 10px;
+            border-left: 3px solid #FF5A24; /* secondary color */
+            margin-top: 15px;
         }
 
         /* Footer */
         .footer {
             text-align: center;
-            font-size: 12px;
+            font-size: 8pt; /* Adjusted font size */
             color: #999;
-            margin-top: 50px;
+            margin-top: 25px;
         }
 
         /* Page Breaks */
@@ -90,44 +80,15 @@
 
         /* Blockquotes */
         blockquote {
-            border-left: 4px solid #FF5A24; /* secondary color */
-            padding-left: 20px;
+            border-left: 3px solid #FF5A24; /* secondary color */
+            padding-left: 10px;
             color: #2E3156; /* primary color */
             font-style: italic;
         }
-
-        /* Dark Mode Styles */
-        @media (prefers-color-scheme: dark) {
-            body {
-                background-color: #121212; /* dark-background */
-                color: #F5F5F8; /* app-white */
-            }
-            h1, h2, h3, p, a, blockquote {
-                color: #F5F5F8; /* app-white */
-            }
-            .well-profile, .ai-insights {
-                background-color: #2E3156; /* dark-primary */
-                color: #F5F5F8; /* app-white */
-            }
-            .footer {
-                color: #777;
-            }
-        }
-
-        /* Animations */
-        @keyframes fadeIn {
-            0% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-
-        .fade-in {
-            animation: fadeIn 1s ease-out forwards;
-        }
-
     </style>
 </head>
 <body>
-    <h1 class="fade-in">{{ title }}</h1>
+    <h1>{{ title }}</h1>
 
     <p><strong>Generated on:</strong> {{ generation_date }}</p>
 
@@ -143,7 +104,7 @@
     {% for well_name, data in nearby_wells.items() %}
     <div class="well-profile">
         <h3>Well {{ well_name }}</h3>
-        <p>{{ data.well_profile }}</p>
+        <p>{{ data.well_profile | safe }}</p>
     </div>
     {% endfor %}
 
@@ -152,7 +113,7 @@
     {% for well_name, data in similar_wells.items() %}
     <div class="well-profile">
         <h3>Well {{ well_name }}</h3>
-        <p>{{ data.well_profile }}</p>
+        <p>{{ data.well_profile | safe }}</p>
     </div>
     {% endfor %}
 
