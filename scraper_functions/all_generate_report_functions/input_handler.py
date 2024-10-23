@@ -1,7 +1,6 @@
-# all_generate_report_functions/input_handler.py
+# input_handler.py
 
 import sys
-import logging
 
 def get_user_input():
     """
@@ -13,12 +12,12 @@ def get_user_input():
         try:
             latitude = float(sys.argv[1])
             longitude = float(sys.argv[2])
-            logging.info(f"Received coordinates from command line: ({latitude}, {longitude})")
+            print(f"Received coordinates from command line: ({latitude}, {longitude})")
         except ValueError:
-            logging.error("Invalid latitude and longitude values provided.")
+            print("Invalid latitude and longitude values provided.")
             return None
     else:
-        logging.error("Latitude and longitude not provided as command-line arguments.")
+        print("Latitude and longitude not provided as command-line arguments.")
         return None
 
     input_data = {
