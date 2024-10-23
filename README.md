@@ -4,7 +4,7 @@ Copy code
 cd easywell-vm-functions
 
 Copy code
-source venv/bin/activate && cd scraper_functions
+cd easywell-vm-functions && source venv/bin/activate && cd scraper_functions
 
 Copy code
 nohup uvicorn api_server:app --host 0.0.0.0 --port 8000 > api_server.out 2>&1 &

@@ -2,17 +2,19 @@
 
 import logging
 import os
+import sys
 
-# Importing modules from all_generate_report_functions
-from all_generate_report_functions import (
-    input_handler,
-    data_retrieval,
-    ai_insights,
-    report_compilation,
-    report_delivery
-)
+# Adjust sys.path to include parent directory for utils
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
 
-# Correctly import the get_supabase_client function
+import input_handler
+import data_retrieval
+import ai_insights
+import report_compilation
+import report_delivery
+
 from utils.get_supabase_client import get_supabase_client
 
 # ------------------------
