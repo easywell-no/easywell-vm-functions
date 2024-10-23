@@ -64,7 +64,7 @@ Using the information from the wells provided below, generate a detailed and str
 
 8. **Conclusion**: Provide a detailed summary of the key findings and emphasize critical points for the drilling team.
 
-Ensure that the report references specific wells and data where appropriate, and provides insights into why certain wells are more relevant to the proposed drilling operation.
+Ensure that the report references specific wells and data where appropriate, and provides insights into why certain wells are more relevant to the proposed drilling operation. Use oil and gas terminology and stick to the point of lining up information and drawing lines.
 
 Well Data:
 {context}
