@@ -135,11 +135,15 @@ def prepare_data(df, table_name):
         for col in float_columns:
             if col in df.columns:
                 df[col] = df[col].apply(convert_to_float)
+        # Filter out rows where required columns are null
+        df = df.dropna(subset=['wlbcasingtype', 'wlbcasingdiameter', 'wlbcasingdepth'])
     if table_name == 'well_lito':
         integer_columns = ['lsunpdidlithostrat', 'lsunpdidlithostratparent', 'wlbnpdidwellbore']
         for col in integer_columns:
             if col in df.columns:
                 df[col] = df[col].apply(lambda x: int(float(x)) if pd.notnull(x) else None)
+        # Filter out rows where required columns are null
+        df = df.dropna(subset=['lsutopdepth', 'lsuname'])
     if table_name == 'well_mud':
         # Remove duplicates based on primary key
         required_columns = ['wlbwellborename', 'wlbmd', 'wlbmuddatemeasured']
@@ -148,6 +152,8 @@ def prepare_data(df, table_name):
             logging.error(f"Missing columns {missing_columns} in 'well_mud' data")
         else:
             df = df.drop_duplicates(subset=required_columns)
+        # Filter out rows where required columns are null
+        df = df.dropna(subset=['wlbwellborename', 'wlbmd', 'wlbmuddatemeasured'])
     # Replace NaN and NaT with None
     df = df.astype(object).where(pd.notnull(df), None)
     return df
@@ -166,7 +172,7 @@ def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFram
                 supabase.table(table_name).insert(chunk, upsert=False).execute()
             except Exception as e:
                 logging.error(f"Error inserting data into '{table_name}': {e}")
-                break
+                continue
         logging.info(f"Successfully updated table '{table_name}' in Supabase.")
     except Exception as e:
         logging.error(f"Error replacing table '{table_name}' in Supabase: {e}", exc_info=True)
