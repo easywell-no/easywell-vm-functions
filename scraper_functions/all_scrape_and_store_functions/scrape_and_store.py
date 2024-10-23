@@ -8,8 +8,6 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from logging.handlers import RotatingFileHandler
 from dateutil import parser
-import re
-from fractions import Fraction
 import urllib3
 
 # Suppress SSL warnings
@@ -111,15 +109,16 @@ def prepare_data(df, table_name):
         except Exception as e:
             logging.error(f"Error parsing date column '{date_col}': {e}", exc_info=True)
     
-    # Handle numeric columns except for well casings (keep them as strings)
+    # Handle well casing-specific columns as strings (no conversions to numeric types)
     if table_name == 'well_casings':
-        # Keep the columns as strings to avoid NaN issues
+        # Ensure these columns remain strings to handle values like '8 1/2' or '42x36'
         string_columns = ['wlbcasingdiameter', 'wlbcasingdepth', 'wlbholediameter', 'wlbholedepth', 'wlblotmuddencity']
         for col in string_columns:
             if col in df.columns:
-                df[col] = df[col].astype(str)
+                df[col] = df[col].astype(str).replace({pd.NA: None})
         # Filter out rows where required columns are null
         df = df.dropna(subset=['wlbcasingtype', 'wlbcasingdiameter', 'wlbcasingdepth'])
+
     if table_name == 'well_lito':
         integer_columns = ['lsunpdidlithostrat', 'lsunpdidlithostratparent', 'wlbnpdidwellbore']
         for col in integer_columns:
@@ -132,6 +131,7 @@ def prepare_data(df, table_name):
                 df[col] = pd.to_numeric(df[col], errors='coerce')
         # Filter out rows where required columns are null
         df = df.dropna(subset=['lsutopdepth', 'lsuname'])
+
     if table_name == 'well_mud':
         # Remove duplicates based on primary key
         required_columns = ['wlbwellborename', 'wlbmd', 'wlbmuddatemeasured']
@@ -142,8 +142,10 @@ def prepare_data(df, table_name):
             df = df.drop_duplicates(subset=required_columns)
         # Filter out rows where required columns are null
         df = df.dropna(subset=['wlbwellborename', 'wlbmd', 'wlbmuddatemeasured'])
-    # Replace pd.NA and pd.NaT with None
+
+    # Replace pd.NA and pd.NaT with None to avoid issues during insertion
     df = df.replace({pd.NA: None, pd.NaT: None})
+
     return df
 
 def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFrame):
