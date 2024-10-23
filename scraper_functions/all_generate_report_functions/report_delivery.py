@@ -34,7 +34,7 @@ def deliver_report(report: dict):
     for data in report.get('nearby_wells', []):
         transformed_nearby_wells.append({
             'wlbwellborename': data['wlbwellborename'],
-            'distance': data['distance'],
+            'distance': data.get('distance', 0),
             'well_profile': convert_markdown_to_html(data['well_profile'])
         })
 
