@@ -10,6 +10,10 @@ from logging.handlers import RotatingFileHandler
 from dateutil import parser
 import re
 from fractions import Fraction
+import urllib3
+
+# Suppress SSL warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Adjust sys.path to include utils directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,10 +28,10 @@ env_path = os.path.join(parent_dir, '.env')
 load_dotenv(dotenv_path=env_path)
 
 # Create log directory if it doesn't exist
-log_dir = os.path.join(parent_dir, "logs")  # Ensure logs are in the correct directory
+log_dir = os.path.join(parent_dir, "logs")
 os.makedirs(log_dir, exist_ok=True)
 
-# Configure logging for scrape_and_store.py
+# Configure logging
 log_formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
 log_file = os.path.join(log_dir, "scrape_and_store.log")
 
@@ -44,7 +48,7 @@ logging.basicConfig(
     handlers=[rotating_handler, stream_handler]
 )
 
-# Load Supabase credentials from environment variables
+# Load Supabase credentials
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -62,11 +66,14 @@ except Exception as e:
 
 def fetch_csv(url):
     try:
-        response = requests.get(url)
+        response = requests.get(url, verify=False)
         response.raise_for_status()
         content = response.content.decode('utf-8')
         df = pd.read_csv(io.StringIO(content), encoding='utf-8', on_bad_lines='skip')
         return df
+    except requests.exceptions.SSLError as ssl_err:
+        logging.error(f"SSL error fetching CSV from {url}: {ssl_err}", exc_info=True)
+        return None
     except Exception as e:
         logging.error(f"Error fetching CSV from {url}: {e}", exc_info=True)
         return None
@@ -78,7 +85,7 @@ def parse_date_column(series):
             if pd.isnull(date_str):
                 parsed_dates.append(None)
             else:
-                parsed_date = parser.parse(str(date_str), dayfirst=True)  # Set dayfirst=True
+                parsed_date = parser.parse(str(date_str), dayfirst=True)
                 parsed_dates.append(parsed_date.strftime('%Y-%m-%d'))
         except Exception as e:
             logging.error(f"Error parsing date '{date_str}': {e}")
@@ -139,15 +146,14 @@ def prepare_data(df, table_name):
 
 def replace_table_in_supabase(supabase: Client, table_name: str, df: pd.DataFrame):
     try:
-        # Delete all existing data in the table using wlbwellborename
+        # Delete all existing data in the table
         delete_response = supabase.table(table_name).delete().neq('wlbwellborename', '').execute()
         logging.info(f"Deleted records from '{table_name}': {delete_response.data}")
         # Insert new data in chunks
         data = df.to_dict(orient='records')
-        chunk_size = 500  # Adjust chunk size if necessary
+        chunk_size = 500
         for i in range(0, len(data), chunk_size):
             chunk = data[i:i+chunk_size]
-            # Insert data while handling missing values
             insert_response = supabase.table(table_name).insert(chunk, upsert=False).execute()
             if insert_response.error:
                 logging.error(f"Error inserting data into '{table_name}': {insert_response.error}")
