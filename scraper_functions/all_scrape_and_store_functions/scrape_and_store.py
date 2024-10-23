@@ -58,6 +58,17 @@ except Exception as e:
     logging.error(f"Failed to create Supabase client: {e}", exc_info=True)
     sys.exit(1)
 
+def fetch_csv(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        content = response.content.decode('utf-8')
+        df = pd.read_csv(io.StringIO(content), encoding='utf-8', on_bad_lines='skip')
+        return df
+    except Exception as e:
+        logging.error(f"Error fetching CSV from {url}: {e}", exc_info=True)
+        return None
+
 def parse_date_column(series):
     parsed_dates = []
     for date_str in series:
