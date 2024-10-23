@@ -24,15 +24,19 @@ def summarize_text(text, max_tokens=150):
     Summarizes the given text using OpenAI's summarization capability.
     """
     prompt = f"Summarize the following well profile:\n\n{text}\n\nSummary:"
-    response = openai.Completion.create(
-        model="text-davinci-003",
-        prompt=prompt,
-        max_tokens=max_tokens,
-        temperature=0.5,
-        stop=["\n\n"]
-    )
-    summary = response['choices'][0]['text'].strip()
-    return summary
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens,
+            temperature=0.5,
+            stop=["\n\n"]
+        )
+        summary = response['choices'][0]['message']['content'].strip()
+        return summary
+    except Exception as e:
+        logging.error(f"Error summarizing text: {e}")
+        return "Summary not available due to an error."
 
 def get_summarized_well_profiles(well_profiles):
     summarized_profiles = []
@@ -68,15 +72,19 @@ Pre-Well Analysis Report:
     return prompt.strip()
 
 def generate_pre_well_analysis_report(prompt):
-    response = openai.Completion.create(
-        model="text-davinci-003",
-        prompt=prompt,
-        max_tokens=1000,  # Adjust based on desired report length
-        temperature=0.7,
-        stop=["\n\n", "END"]
-    )
-    report = response['choices'][0]['text'].strip()
-    return report
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1000,  # Adjust based on desired report length
+            temperature=0.7,
+            stop=["\n\n", "END"]
+        )
+        report = response['choices'][0]['message']['content'].strip()
+        return report
+    except Exception as e:
+        logging.error(f"Error generating pre-well analysis report: {e}")
+        return "Report not available due to an error."
 
 def generate_ai_insights(well_profiles, input_lat, input_lon):
     """
