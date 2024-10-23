@@ -7,7 +7,7 @@ from weasyprint import HTML
 from utils.get_supabase_client import get_supabase_client
 from utils.markdown_to_html import convert_markdown_to_html
 
-def deliver_report(report: Dict):
+def deliver_report(report: dict):
     """
     Generate a PDF report from HTML template and upload it to Supabase storage.
     """
