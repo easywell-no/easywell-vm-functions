@@ -68,9 +68,12 @@ async def generate_report(request: ReportRequest):
         if process_status["generate_report"]["running"]:
             raise HTTPException(status_code=400, detail="Generate report is already running.")
     try:
+        script_paths = {
+            "generate_report": os.path.join(os.path.dirname(os.path.abspath(__file__)), "all_generate_report_functions", "generate_report.py")
+        }
         # Start the report generation script with latitude and longitude as arguments
         process = subprocess.Popen(
-            [sys.executable, "generate_report.py", str(latitude), str(longitude)],
+            [sys.executable, script_paths["generate_report"], str(latitude), str(longitude)],
             cwd=os.path.dirname(os.path.abspath(__file__)),
             env=os.environ.copy(),
             stdout=subprocess.PIPE,
@@ -100,15 +103,17 @@ async def start_script(script_name: str):
     try:
         # Prepare environment variables
         env = os.environ.copy()
-        # If needed, adjust PYTHONPATH
+        # Adjust PYTHONPATH
         env["PYTHONPATH"] = os.pathsep.join([
-            os.path.dirname(os.path.abspath(__file__)),  # scraper_functions/
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "utils"),  # scraper_functions/utils/
+            os.path.dirname(os.path.abspath(__file__)),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "utils"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "all_generate_report_functions"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "all_scrape_and_store_functions"),
         ])
 
         # Start the scraping script
         script_paths = {
-            "scrape_and_store": "all_scrape_and_store_functions/scrape_and_store.py"
+            "scrape_and_store": os.path.join(os.path.dirname(os.path.abspath(__file__)), "all_scrape_and_store_functions", "scrape_and_store.py")
         }
         process = subprocess.Popen(
             [sys.executable, script_paths[script_name]],
@@ -189,7 +194,7 @@ async def database_status():
     Runs the check_database_content.py script and returns its JSON output.
     """
     script_name = "check_database_content.py"
-    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), script_name)
+    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "all_url_helpers", script_name)
 
     if not os.path.exists(script_path):
         logging.error(f"{script_name} does not exist.")
@@ -227,4 +232,3 @@ async def database_status():
     except Exception as e:
         logging.error(f"Failed to run {script_name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
