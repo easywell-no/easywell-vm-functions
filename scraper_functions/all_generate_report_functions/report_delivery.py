@@ -4,7 +4,6 @@ import os
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from weasyprint import HTML
-from weasyprint.fonts import FontConfiguration
 from utils.get_supabase_client import get_supabase_client
 from utils.markdown_to_html import convert_markdown_to_html
 
@@ -68,11 +67,10 @@ def deliver_report(report: dict):
         print(f"Failed to render HTML template: {e}")
         return
 
-    # Convert HTML to PDF using WeasyPrint with TOC
+    # Convert HTML to PDF using WeasyPrint
     try:
-        font_config = FontConfiguration()
         html = HTML(string=rendered_html, base_url=current_dir)
-        pdf = html.write_pdf(font_config=font_config)
+        pdf = html.write_pdf()
         print("HTML converted to PDF successfully.")
     except Exception as e:
         print(f"Failed to convert HTML to PDF: {e}")
