@@ -3,7 +3,8 @@
 import os
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from weasyprint import HTML
+from weasyprint import HTML, CSS
+from weasyprint.fonts import FontConfiguration
 from utils.get_supabase_client import get_supabase_client
 from utils.markdown_to_html import convert_markdown_to_html
 
@@ -50,7 +51,7 @@ def deliver_report(report: dict):
     nearby_well_names = [well['wlbwellborename'] for well in transformed_nearby_wells]
     similar_well_names = [well['wlbwellborename'] for well in transformed_similar_wells]
 
-    # Render the HTML content using the template
+    # First Render: Generate HTML without page numbers
     try:
         rendered_html = template.render(
             title=report.get('title', 'Pre-Well Drilling Report'),
@@ -60,17 +61,54 @@ def deliver_report(report: dict):
             ai_insights=convert_markdown_to_html(report.get('ai_insights', '')),
             generation_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             nearby_well_names=nearby_well_names,
-            similar_well_names=similar_well_names
+            similar_well_names=similar_well_names,
+            toc_page_numbers={}  # Empty initially
         )
-        print("HTML content rendered successfully.")
+        print("Initial HTML content rendered successfully.")
     except Exception as e:
         print(f"Failed to render HTML template: {e}")
         return
 
+    # Render the HTML to get the page numbers
+    try:
+        font_config = FontConfiguration()
+        html = HTML(string=rendered_html, base_url=current_dir)
+        doc = html.render(font_config=font_config)
+
+        # Initialize toc_page_numbers dictionary
+        toc_page_numbers = {}
+
+        # Map IDs to page numbers
+        for page_number, page in enumerate(doc.pages, start=1):
+            for anchor in page.anchors:
+                if anchor not in toc_page_numbers:
+                    toc_page_numbers[anchor] = page_number
+    except Exception as e:
+        print(f"Failed to render HTML for page numbers: {e}")
+        return
+
+    # Second Render: Generate HTML with page numbers
+    try:
+        rendered_html = template.render(
+            title=report.get('title', 'Pre-Well Drilling Report'),
+            summary=report.get('summary', ''),
+            nearby_wells=transformed_nearby_wells,
+            similar_wells=transformed_similar_wells,
+            ai_insights=convert_markdown_to_html(report.get('ai_insights', '')),
+            generation_date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            nearby_well_names=nearby_well_names,
+            similar_well_names=similar_well_names,
+            toc_page_numbers=toc_page_numbers
+        )
+        print("Final HTML content with page numbers rendered successfully.")
+    except Exception as e:
+        print(f"Failed to render HTML template with page numbers: {e}")
+        return
+
     # Convert HTML to PDF using WeasyPrint
     try:
-        html = HTML(string=rendered_html)
-        pdf = html.write_pdf()
+        html = HTML(string=rendered_html, base_url=current_dir)
+        pdf = html.write_pdf(font_config=font_config)
         print("HTML converted to PDF successfully.")
     except Exception as e:
         print(f"Failed to convert HTML to PDF: {e}")
